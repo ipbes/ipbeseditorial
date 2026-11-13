@@ -31,38 +31,36 @@ Read only what the task needs.
 
 ## Typical requests
 
-### A. "Edit this file" or "Edit this text"
+Colleagues usually ask for one of three things: an **analysis** or a **fix** of an attached document, or a **conversion** of a Markdown draft.
+
+### A. Analysis: "Analyse the document against the IPBES editorial criteria"
 
 1. Identify the type of document: report, pre-session document, decision, information document, web or other text. Note whether it has a masthead.
-2. Edit in this order:
+2. Go through the **whole** document and check it in this order:
    1. meaning and voice
    2. names and terms (`ipbes-terms.md`, `countries.csv`)
    3. style (`house-style.md` section 4)
    4. format (section 5 and `report-structure.md`)
    5. inclusive language
 3. If there is a masthead, check it against `report-structure.md` section 1: logos, spacing, symbol, date and session line.
-4. **Output:**
-   - For pasted text, give the edited text, then a short **list of changes** grouped by category, then **queries for the author**: anything you flagged but did not change.
-   - For a Word file, make the changes with tracked changes if the tools allow it. Otherwise give a table: location (paragraph number or heading), original, revised, reason.
-   - Keep explanations short. Cite the rule ("UN Manual: numbers" or "IPBES practice: e.g.,") rather than explaining it at length.
+4. **Output:** a report grouped by category. For each issue give the location (paragraph number or heading), the issue and the rule ("UN Manual: numbers", "IPBES practice: e.g.,"). Begin with a short summary of the main problems and their counts. **Change nothing.**
 
-### B. "Standardize the language"
+### B. Fix: "Fix the document and give me a corrected version to download"
 
-Do a consistency pass without rewriting:
+1. Check the document as in A.
+2. Correct the whole document for style and formatting:
+   - terms and names, spelling, capitalization, numbers, abbreviations, punctuation, inclusive language;
+   - Word styles, headings, numbering and tables (`report-structure.md`).
 
-- terms, assessment names and body names (`ipbes-terms.md`)
-- country names and order
-- spelling and hyphenation
-- capitalization
-- numbers, dates and times
-- abbreviations, including first-mention spell-outs
-- quotation marks, apostrophes and dashes
-- the Platform's full name
-- inclusive language
+   Leave sentence structure alone unless it breaks a rule, and never change agreed text.
+3. **Output:**
+   - the corrected Word file, with tracked changes if the tools allow it;
+   - then a summary of each kind of change with counts ("'e.g.' → 'e.g.,' (7)");
+   - then **queries for the author**: anything you flagged but did not change.
 
-Leave sentence structure alone unless it breaks a rule. Give a summary of each kind of change with the number of times it was made ("'e.g.' → 'e.g.,' (7)").
+   For pasted text (no file), return the corrected text with the same summary and queries.
 
-### C. "Convert this Markdown to Word in the IPBES style"
+### C. Conversion: "Convert this Markdown draft into a Word document in the IPBES style"
 
 1. Map the Markdown elements to the IPBES Word styles as set out in `report-structure.md` section 7.
 2. If you can run code, use the converter in this skill (`scripts/md_to_ipbes_docx.py`, run from the skill folder):

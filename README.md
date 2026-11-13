@@ -30,7 +30,7 @@ The assistant can **edit** a document or passage and list what it changed, **sta
    - **Name:** IPBES editorial assistant
    - **Description:** Edits and standardizes English IPBES documents in the IPBES and UN house style.
    - **Instructions:** paste the whole text of `skills/ipbes-editorial/copilot/ipbes-editorial-instructions.txt`.
-3. Under **Knowledge**, upload these files from `skills/ipbes-editorial/references/`:
+3. Under **Knowledge**, upload the following files by providing the github URL: https://github.com/ipbes/ipbeseditorial/tree/main/skills/ipbes-editorial/references:
    - `house-style.md`
    - `ipbes-terms.md`
    - `report-structure.md`
@@ -46,10 +46,17 @@ Start a new Copilot chat and paste the whole text of the instructions file. Then
 
 ### What to ask
 
-- "Edit this paragraph to IPBES style and list what you changed."
-- "Standardize the language in the attached document. Don't rewrite, just make it consistent."
-- "Check the masthead of the attached document."
-- "Turn this Markdown draft into an IPBES-style Word document."
+Attach the document, then ask one of three things:
+
+1. **Analysis:** "Analyse the attached document against the IPBES editorial criteria."
+
+   The assistant goes through the whole document and reports where it departs from the house style and formatting requirements, grouped by category. It does not change anything.
+2. **Fixing:** "Fix the attached document to match the IPBES style and formatting requirements, and give me the corrected document to download."
+
+   The assistant edits the whole document, returns a corrected Word file, and lists what it changed and what it could not decide.
+3. **Conversion:** "Convert the attached Markdown draft into a Word document in the IPBES style."
+
+   The assistant maps the Markdown headings, paragraphs, lists and tables to the IPBES Word styles, applies the language rules, and returns a Word file to download. It adds a masthead only if you ask for one.
 
 **Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or decisions. Report it if it ever does.
 
