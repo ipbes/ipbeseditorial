@@ -13,7 +13,7 @@ Editorial tools for English IPBES documents: the IPBES house style for AI assist
 | `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](ipbes-editorial/references/evidence.md) |
 | `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter) and `apply_changes.py` (applies a change table to a Word file as tracked changes) |
 | `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
-| `word-macro/IPBESEditorial.bas` | Word macros (see section 3) |
+| `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 3 |
 | `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-change-list.docx` (a change table for that document) and `ipbes-test-draft.md` (a Markdown draft with typical errors) |
 | `tools/` | Maintenance scripts (see section 4) |
 | `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
@@ -50,19 +50,46 @@ The macros check a document against the house style and mark possible issues as 
 
 1. In Word, press **Alt+F11** (on a Mac: **Tools → Macro → Visual Basic Editor**).
 2. In the left pane, select **Project (Document 1)**.
-3. Choose **File → Import File…** and select `word-macro/IPBESEditorial.bas`.
-3. Save the document as a **Word Macro-Enabled Template (*.dotm)** named `IPBES Editorial.dotm`.
-4. Each colleague copies the file into their Word **Startup** folder and restarts Word:
+3. Choose **File → Import File…** and select `word-macro/IPBESEditorial.bas`, then choose **Debug → Compile**.
+4. Choose **Tools → Project Properties** and set **Project Name** to `IPBESEditorial`. This avoids a clash with other add-ins, such as Zotero, whose projects are also called "Project".
+5. In Word, choose **File → Save As** and set the type to **Word Macro-Enabled Template (*.dotm)**. Do not choose *Word Macro-Enabled Document (*.docm)*: Word ignores documents in the Startup folder, so the macros would not load. Word switches to the Templates folder when you pick this type, so browse to the Startup folder (below) and save the file as `IPBES Editorial.dotm`.
+6. Each colleague copies the file into their Word **Startup** folder and restarts Word:
    - **Windows:** `%APPDATA%\Microsoft\Word\STARTUP` (paste this into the File Explorer address bar).
    - **Mac:** `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word`.
 
-**Buttons:**
+**IPBES tab on the ribbon (recommended).** The add-in can carry its own **IPBES** tab, which appears after the Review tab. Its buttons are **Check document**, **Check voice**, **Safe fixes**, **Apply change list** and **Remove IPBES comments**. Colleagues who copy the `.dotm` into their Startup folder get the tab automatically, with nothing to set up. To add the tab, the secretariat editor does this once:
+
+1. Import the latest `IPBESEditorial.bas` into `IPBES Editorial.dotm` (see "Updating the add-in" below), save it, and **close Word completely**.
+2. In a WSL terminal in the repository folder, run:
+
+   ```
+   python3 tools/add_ribbon.py "$(wslpath "$(cmd.exe /c 'echo %APPDATA%' | tr -d '\r')")/Microsoft/Word/STARTUP/IPBES Editorial.dotm"
+   ```
+
+   The script keeps a backup (`IPBES Editorial.dotm.bak`). Run it again after any change to `word-macro/ipbes-ribbon.xml`; the ribbon definition lives in that file. Importing a new `.bas` into the `.dotm` doesn't remove the tab.
+3. Start Word. The **IPBES** tab is now there.
+
+**Quick Access Toolbar buttons (alternative).** Add these **with `IPBES Editorial.dotm` closed**: restart Word after installing or updating the add-in, then open an ordinary document. Buttons added while the template is open for editing point to that open file and stop working once it is closed ("The macro can't be found…").
 
 1. Go to **File → Options → Quick Access Toolbar**.
 2. Under "Choose commands from", select **Macros**.
 3. Add **IPBES_CheckDocument**, **IPBES_SafeFixes**, **IPBES_ApplyChangeList** and **IPBES_RemoveIPBESComments**, then use **Modify…** to give them icons and short names.
 
+**If the macros don't appear** in **View → Macros** or in the Quick Access Toolbar list (where they show as `IPBESEditorial.IPBESEditorial.IPBES_…`, or `Project.IPBESEditorial.IPBES_…` if the project was not renamed):
+
+1. Close every Word window, including `IPBES Editorial.dotm` itself, and start Word again. Word loads Startup add-ins only when it starts, and not while the template is open for editing.
+2. Go to **File → Options → Add-ins**, set **Manage** to **Templates**, and select **Go…**. `IPBES Editorial.dotm` must be listed and ticked under **Global templates and add-ins**. If it isn't listed, use **Add…**.
+3. Go to **Trust Center → Trust Center Settings → Add-ins**. If unsigned add-ins are disabled there, the add-in will not load until IT signs it or allows it.
+
 **Macro security:** if the macros are blocked, check **File → Options → Trust Center → Trusted Locations**; the Startup folder is normally trusted. If the organization blocks macros, ask IT to sign the `.dotm` or to trust its location. Do not lower macro security for all documents.
+
+### Updating the add-in after a new version of the macros
+
+1. Close Word completely.
+2. Start Word and open `IPBES Editorial.dotm` from the STARTUP folder (%appdata%\Microsoft\Word\Startup) with **File → Open**. A double-click would create a new document instead.
+3. Press **Alt+F11**. Under the template's project, right-click **Modules → IPBESEditorial**, choose **Remove IPBESEditorial…**, and answer **No** to exporting it.
+4. Choose **File → Import File…**, select the new `word-macro/IPBESEditorial.bas`, then choose **Debug → Compile**.
+5. Save, close Word, and start it again.
 
 ### Using the macros
 
@@ -159,6 +186,7 @@ Run these commands from the repository folder. The scripts need Python 3; the Wo
 
 | Task | Command |
 |---|---|
+| Add or update the IPBES ribbon tab in the Word add-in | `python3 tools/add_ribbon.py "path/to/IPBES Editorial.dotm"` (close Word first; see section 3) |
 | Package the skill for Claude | `python3 tools/package_skill.py` (creates `ipbes-editorial.zip`, with the `ipbes-editorial` folder that Claude expects) |
 | Convert a Markdown draft to Word | `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py draft.md draft.docx --numbered --symbol IPBES/13/5` (leave out `--numbered` for documents without numbered paragraphs). Test: `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py test/ipbes-test-draft.md test-draft.docx --numbered --number-headings` |
 | Apply a change table to a Word file as tracked changes | `python3 ipbes-editorial/scripts/apply_changes.py document.docx changes.md corrected.docx`. The change table can be Markdown, CSV, JSON or a Word table. Test: `python3 ipbes-editorial/scripts/apply_changes.py test/ipbes-test-document.docx test/ipbes-test-change-list.docx test-corrected.docx` |

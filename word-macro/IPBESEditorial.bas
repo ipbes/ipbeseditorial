@@ -21,6 +21,9 @@ Attribute VB_Name = "IPBESEditorial"
 '                            the document to correct.
 '   IPBES_RemoveIPBESComments  Deletes only the comments added by these macros.
 '
+' With tools/add_ribbon.py the add-in also gets an "IPBES" tab on the ribbon
+' that runs these macros (entry points IPBESRibbon_* below).
+'
 ' Rules: ipbes-editorial/references/house-style.md (UN Editorial Manual
 ' plus IPBES practice from the Plenary reports IPBES-1 to IPBES-12).
 ' Agreed text (decisions, approved summaries for policymakers, quotations) must
@@ -358,7 +361,7 @@ Public Sub IPBES_SafeFixes()
               "Continue?", vbYesNo + vbQuestion, "IPBES") <> vbYes Then Exit Sub
 
     oldTrack = doc.TrackRevisions
-    doc.TrackRevisions = True
+    If Not SetTracking(doc, True) Then Exit Sub
     Application.ScreenUpdating = False
     BuildRules
     Set ReportLines = New Collection
@@ -389,7 +392,7 @@ Public Sub IPBES_SafeFixes()
         ReportLines.Add "Punctuation" & vbTab & n & vbTab & "fixed" & vbTab & "straight quotes -> curly" & vbTab & ""
     End If
 
-    doc.TrackRevisions = oldTrack
+    SetTracking doc, oldTrack
     Application.ScreenUpdating = True
     msg = total & " change(s) made with Track Changes." & vbCr & _
           "Review them (Review > Next) and reject any inside agreed text."
@@ -410,32 +413,46 @@ Public Sub IPBES_RemoveIPBESComments()
 End Sub
 
 Public Sub IPBES_ApplyChangeList()
-    Dim target As Document, listDoc As Document, d As Document, tbl As Table
-    Dim colOrig As Long, colRev As Long, colRule As Long, colNo As Long, r As Long, c As Long
-    Dim orig As String, rev As String, ruleTxt As String, hdr As String, itemNo As String
+    Dim target As Document, listDoc As Document, d As Document
+    Dim items As Collection, it As Variant
+    Dim orig As String, rev As String, ruleTxt As String, itemNo As String
     Dim applied As Long, notFound As Long, ambiguous As Long, skipped As Long, res As Long
     Dim oldTrack As Boolean, candidates As Collection, names As String, choice As String, i As Long
 
     Set target = ActiveDocument
-    If FindChangeTable(target) > 0 Then
+    If HasChangeList(target) Then
         MsgBox "This document contains the change list." & vbCr & vbCr & _
                "Switch to the document you want to correct, then run IPBES_ApplyChangeList again.", vbExclamation, "IPBES"
         Exit Sub
     End If
 
     Set candidates = New Collection
+    names = ""
     For Each d In Documents
         If Not d Is target Then
-            If FindChangeTable(d) > 0 Then candidates.Add d
+            names = names & "  - " & d.Name & vbCr
+            If HasChangeList(d) Then candidates.Add d
         End If
     Next d
+
     If candidates.Count = 0 Then
-        MsgBox "No change list found." & vbCr & vbCr & _
-               "1. Copy the change table from Copilot or Claude (columns Original and Revised)." & vbCr & _
-               "2. Paste it into a new Word document and keep that document open." & vbCr & _
-               "3. Return to the document to correct and run IPBES_ApplyChangeList.", vbExclamation, "IPBES"
+        If Application.ProtectedViewWindows.Count > 0 Then
+            MsgBox "A document is open in Protected View, so the macro cannot read it:" & vbCr & "  - " & _
+                   Application.ProtectedViewWindows(1).Document.Name & vbCr & vbCr & _
+                   "Click 'Enable Editing' in the yellow bar of that document, then run IPBES_ApplyChangeList again.", _
+                   vbExclamation, "IPBES"
+        Else
+            MsgBox "No change list found." & vbCr & vbCr & _
+                   "Other open documents checked:" & vbCr & IIf(Len(names) = 0, "  (none)" & vbCr, names) & vbCr & _
+                   "The change list must be a table (or lines like | 1 | ... | ... |) whose first row has the " & _
+                   "headings Original and Revised." & vbCr & vbCr & _
+                   "1. Copy the change table from Copilot or Claude." & vbCr & _
+                   "2. Paste it into a new Word document and keep that document open." & vbCr & _
+                   "3. Return to the document to correct and run IPBES_ApplyChangeList.", vbExclamation, "IPBES"
+        End If
         Exit Sub
     End If
+
     If candidates.Count = 1 Then
         Set listDoc = candidates(1)
     Else
@@ -451,33 +468,24 @@ Public Sub IPBES_ApplyChangeList()
         Set listDoc = candidates(i)
     End If
 
-    Set tbl = listDoc.Tables(FindChangeTable(listDoc))
-    For c = 1 To tbl.Rows(1).Cells.Count
-        hdr = LCase(CellText(tbl.Cell(1, c)))
-        If InStr(hdr, "original") > 0 Then colOrig = c
-        If InStr(hdr, "revised") > 0 Or InStr(hdr, "corrected") > 0 Then colRev = c
-        If InStr(hdr, "rule") > 0 Or InStr(hdr, "reason") > 0 Then colRule = c
-        If hdr = "no." Or hdr = "no" Or hdr = "#" Then colNo = c
-    Next c
+    Set items = ReadChangeList(listDoc)
+    If items.Count = 0 Then
+        MsgBox "The change list in '" & listDoc.Name & "' has no rows under its headings.", vbExclamation, "IPBES"
+        Exit Sub
+    End If
 
-    If MsgBox("Apply " & (tbl.Rows.Count - 1) & " change(s) from '" & listDoc.Name & "'" & vbCr & _
+    If MsgBox("Apply " & items.Count & " change(s) from '" & listDoc.Name & "'" & vbCr & _
               "to '" & target.Name & "' with Track Changes?" & vbCr & vbCr & _
               "Each change is made only if its original text is found exactly once." & vbCr & _
               "Review every tracked change afterwards.", vbYesNo + vbQuestion, "IPBES") <> vbYes Then Exit Sub
 
     Set ReportLines = New Collection
     oldTrack = target.TrackRevisions
-    target.TrackRevisions = True
+    If Not SetTracking(target, True) Then Exit Sub
     Application.ScreenUpdating = False
 
-    For r = 2 To tbl.Rows.Count
-        orig = "": rev = "": ruleTxt = "": itemNo = CStr(r - 1)
-        On Error Resume Next
-        orig = CellText(tbl.Cell(r, colOrig))
-        rev = CellText(tbl.Cell(r, colRev))
-        If colRule > 0 Then ruleTxt = CellText(tbl.Cell(r, colRule))
-        If colNo > 0 Then itemNo = CellText(tbl.Cell(r, colNo))
-        On Error GoTo 0
+    For Each it In items
+        itemNo = it(0): orig = it(1): rev = it(2): ruleTxt = it(3)
         If Len(orig) = 0 Or orig = rev Then
             skipped = skipped + 1
             ReportLines.Add "Skipped" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & _
@@ -501,9 +509,9 @@ Public Sub IPBES_ApplyChangeList()
                         Left(orig, 100) & " (commented, not applied)"
             End Select
         End If
-    Next r
+    Next it
 
-    target.TrackRevisions = oldTrack
+    SetTracking target, oldTrack
     Application.ScreenUpdating = True
     MsgBox applied & " change(s) applied with Track Changes." & vbCr & _
            notFound & " not found, " & ambiguous & " found more than once, " & skipped & " skipped." & vbCr & vbCr & _
@@ -511,13 +519,20 @@ Public Sub IPBES_ApplyChangeList()
     WriteReport target, applied, "Change list applied", "Status|Item|-|Rule|Text"
 End Sub
 
+' True if the document holds a change list (a table or "| ... |" text lines with
+' the headings Original and Revised).
+Private Function HasChangeList(ByVal d As Document) As Boolean
+    HasChangeList = (FindChangeTable(d) > 0) Or (FindPipeHeader(d) > 0)
+End Function
+
 ' Returns the index of the first table whose header row contains "Original" and "Revised", or 0.
 Private Function FindChangeTable(ByVal d As Document) As Long
     Dim i As Long, h As String
     For i = 1 To d.Tables.Count
-        On Error Resume Next
         h = ""
-        h = LCase(d.Tables(i).Rows(1).Range.Text)
+        On Error Resume Next
+        h = LCase(d.Tables(i).Range.Paragraphs(1).Range.Text)
+        h = h & " " & LCase(d.Tables(i).Rows(1).Range.Text)
         On Error GoTo 0
         If InStr(h, "original") > 0 And (InStr(h, "revised") > 0 Or InStr(h, "corrected") > 0) Then
             FindChangeTable = i
@@ -526,18 +541,109 @@ Private Function FindChangeTable(ByVal d As Document) As Long
     Next i
 End Function
 
-' Text of a table cell without the end-of-cell marker and surrounding quotes or markdown.
+' Returns the index of the paragraph holding a "| Original | Revised |" header line, or 0.
+Private Function FindPipeHeader(ByVal d As Document) As Long
+    Dim i As Long, t As String
+    For i = 1 To d.Paragraphs.Count
+        If i > 2000 Then Exit Function
+        t = LCase(Trim(d.Paragraphs(i).Range.Text))
+        If Left(t, 1) = "|" And InStr(t, "original") > 0 And (InStr(t, "revised") > 0 Or InStr(t, "corrected") > 0) Then
+            FindPipeHeader = i
+            Exit Function
+        End If
+    Next i
+End Function
+
+' Reads the change list into a collection of Array(no, original, revised, rule).
+Private Function ReadChangeList(ByVal d As Document) As Collection
+    Dim items As New Collection, tbl As Table, r As Long, c As Long, hdr As String
+    Dim colOrig As Long, colRev As Long, colRule As Long, colNo As Long
+    Dim cells() As String, i As Long, startPara As Long, t As String, n As Long
+    Dim vNo As String, vOrig As String, vRev As String, vRule As String
+
+    If FindChangeTable(d) > 0 Then
+        Set tbl = d.Tables(FindChangeTable(d))
+        For c = 1 To tbl.Rows(1).Cells.Count
+            SetColumn LCase(CellText(tbl.Cell(1, c))), c, colOrig, colRev, colRule, colNo
+        Next c
+        For r = 2 To tbl.Rows.Count
+            n = n + 1
+            vNo = CStr(n): vOrig = "": vRev = "": vRule = ""
+            On Error Resume Next                  ' rows with merged cells may lack a column
+            If colNo > 0 Then vNo = CellText(tbl.Cell(r, colNo))
+            vOrig = CellText(tbl.Cell(r, colOrig))
+            vRev = CellText(tbl.Cell(r, colRev))
+            If colRule > 0 Then vRule = CellText(tbl.Cell(r, colRule))
+            On Error GoTo 0
+            items.Add Array(vNo, vOrig, vRev, vRule)
+        Next r
+    Else
+        startPara = FindPipeHeader(d)
+        If startPara = 0 Then Set ReadChangeList = items: Exit Function
+        cells = SplitPipes(d.Paragraphs(startPara).Range.Text)
+        For c = 0 To UBound(cells)
+            SetColumn LCase(cells(c)), c + 1, colOrig, colRev, colRule, colNo
+        Next c
+        For i = startPara + 1 To d.Paragraphs.Count
+            t = Trim(Replace(d.Paragraphs(i).Range.Text, vbCr, ""))
+            If Left(t, 1) <> "|" Then Exit For
+            If Not (Replace(Replace(Replace(Replace(t, "|", ""), "-", ""), ":", ""), " ", "") = "") Then
+                cells = SplitPipes(t)
+                n = n + 1
+                vNo = CStr(n)
+                If colNo > 0 Then vNo = PipeCell(cells, colNo)
+                items.Add Array(vNo, PipeCell(cells, colOrig), PipeCell(cells, colRev), PipeCell(cells, colRule))
+            End If
+        Next i
+    End If
+    Set ReadChangeList = items
+End Function
+
+Private Sub SetColumn(ByVal hdr As String, ByVal c As Long, ByRef colOrig As Long, ByRef colRev As Long, _
+                      ByRef colRule As Long, ByRef colNo As Long)
+    hdr = Trim(hdr)
+    If InStr(hdr, "original") > 0 Then colOrig = c
+    If InStr(hdr, "revised") > 0 Or InStr(hdr, "corrected") > 0 Then colRev = c
+    If InStr(hdr, "rule") > 0 Or InStr(hdr, "reason") > 0 Then colRule = c
+    If hdr = "no." Or hdr = "no" Or hdr = "#" Then colNo = c
+End Sub
+
+' Splits "| a | b | c |" into an array of cleaned cells (0-based).
+Private Function SplitPipes(ByVal t As String) As String()
+    Dim parts() As String, i As Long
+    t = Trim(Replace(Replace(t, vbCr, ""), Chr(7), ""))
+    If Left(t, 1) = "|" Then t = Mid(t, 2)
+    If Right(t, 1) = "|" Then t = Left(t, Len(t) - 1)
+    parts = Split(t, "|")
+    For i = 0 To UBound(parts)
+        parts(i) = CleanCellText(parts(i))
+    Next i
+    SplitPipes = parts
+End Function
+
+Private Function PipeCell(cells() As String, ByVal col As Long) As String
+    If col >= 1 And col - 1 <= UBound(cells) Then PipeCell = cells(col - 1)
+End Function
+
+' Text of a table cell without the end-of-cell marker.
 Private Function CellText(ByVal c As Cell) As String
-    Dim t As String, f As String, l As String
+    Dim t As String
     t = c.Range.Text
     If Len(t) >= 2 Then t = Left(t, Len(t) - 2)          ' strip Chr(13) & Chr(7)
+    CellText = CleanCellText(t)
+End Function
+
+' Removes surrounding spaces, quotes, backticks and Markdown bold from a cell.
+Private Function CleanCellText(ByVal t As String) As String
+    Dim f As String, l As String
     t = Trim(Replace(t, ChrW(160), " "))
+    If Left(t, 2) = "**" And Right(t, 2) = "**" And Len(t) >= 4 Then t = Mid(t, 3, Len(t) - 4)
     If Left(t, 1) = "`" And Right(t, 1) = "`" And Len(t) >= 2 Then t = Mid(t, 2, Len(t) - 2)
     If Len(t) >= 2 Then
         f = Left(t, 1): l = Right(t, 1)
         If (f = Chr(34) Or f = ChrW(8220)) And (l = Chr(34) Or l = ChrW(8221)) Then t = Mid(t, 2, Len(t) - 2)
     End If
-    CellText = t
+    CleanCellText = Trim(t)
 End Function
 
 ' Applies one change as a tracked change. Returns 1 if applied, 0 if not found,
@@ -634,6 +740,72 @@ Private Function NormQ(ByVal t As String) As String
     t = Replace(t, Chr(30), "-")
     t = Replace(t, ChrW(8209), "-")
     NormQ = t
+End Function
+
+' ---------------------------------------------------------------------------
+' Ribbon entry points (IPBES tab, see word-macro/ipbes-ribbon.xml).
+' The control argument is declared As Object so that no extra library
+' reference is needed.
+' ---------------------------------------------------------------------------
+Public Sub IPBESRibbon_CheckDocument(ByVal control As Object)
+    IPBES_CheckDocument
+End Sub
+
+Public Sub IPBESRibbon_CheckVoice(ByVal control As Object)
+    IPBES_CheckVoice
+End Sub
+
+Public Sub IPBESRibbon_SafeFixes(ByVal control As Object)
+    IPBES_SafeFixes
+End Sub
+
+Public Sub IPBESRibbon_ApplyChangeList(ByVal control As Object)
+    IPBES_ApplyChangeList
+End Sub
+
+Public Sub IPBESRibbon_RemoveComments(ByVal control As Object)
+    IPBES_RemoveIPBESComments
+End Sub
+
+' ---------------------------------------------------------------------------
+' Track Changes helpers
+' ---------------------------------------------------------------------------
+' Word refuses to change TrackRevisions while a comment card is selected in the
+' comments pane (run-time error 4605). Adding comments can move the focus into
+' the new comment, so the focus is moved back to the document text first.
+Private Sub FocusDocumentText(ByVal doc As Document)
+    On Error Resume Next
+    doc.Activate
+    doc.ActiveWindow.View.SeekView = wdSeekMainDocument
+    If doc.ActiveWindow.Panes.Count > 1 Then doc.ActiveWindow.Panes(1).Activate
+    If Selection.StoryType <> wdMainTextStory Then doc.Range(0, 0).Select
+    On Error GoTo 0
+End Sub
+
+' Switches Track Changes on or off. Returns False (after telling the user) if
+' Word does not allow it.
+Private Function SetTracking(ByVal doc As Document, ByVal onOff As Boolean) As Boolean
+    FocusDocumentText doc
+    On Error Resume Next
+    doc.TrackRevisions = onOff
+    If Err.Number <> 0 Then
+        Err.Clear
+        doc.Range(0, 0).Select                  ' second attempt with the cursor at the start
+        doc.TrackRevisions = onOff
+    End If
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        Application.ScreenUpdating = True
+        MsgBox "Word did not allow Track Changes to be switched " & IIf(onOff, "on", "off") & "." & vbCr & vbCr & _
+               "Click once in the document text (not in a comment), then run the macro again." & _
+               IIf(onOff, "", vbCr & "Track Changes may still be on: check Review > Track Changes."), _
+               vbExclamation, "IPBES"
+        SetTracking = False
+        Exit Function
+    End If
+    On Error GoTo 0
+    SetTracking = True
 End Function
 
 ' ---------------------------------------------------------------------------

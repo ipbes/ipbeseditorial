@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  IPBES tab for the Word ribbon. Added to "IPBES Editorial.dotm" by tools/add_ribbon.py.
+  Each button calls a ribbon entry point in word-macro/IPBESEditorial.bas (IPBESRibbon_*).
+  Icons are built-in Office images (imageMso).
+-->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <ribbon>
+    <tabs>
+      <tab id="IPBESTab" label="IPBES" insertAfterMso="TabReview">
+        <group id="IPBESCheckGroup" label="Check">
+          <button id="IPBESCheckDocument" label="Check document" size="large"
+                  imageMso="Spelling" onAction="IPBESRibbon_CheckDocument"
+                  screentip="Check document"
+                  supertip="Marks possible IPBES house-style issues with [IPBES] comments and opens a summary report. Does not change the text." />
+          <button id="IPBESCheckVoice" label="Check voice" size="large"
+                  imageMso="ReviewNewComment" onAction="IPBESRibbon_CheckVoice"
+                  screentip="Check voice"
+                  supertip="Marks prescriptive wording (must, should, need to...) for review. IPBES is policy-relevant, not policy-prescriptive." />
+        </group>
+        <group id="IPBESFixGroup" label="Fix (tracked)">
+          <button id="IPBESSafeFixes" label="Safe fixes" size="large"
+                  imageMso="ReviewTrackChanges" onAction="IPBESRibbon_SafeFixes"
+                  screentip="Safe fixes"
+                  supertip="Applies safe corrections (Platform name, e.g., -ize, dashes, quotes, country names...) with Track Changes on." />
+          <button id="IPBESApplyChangeList" label="Apply change list" size="large"
+                  imageMso="TableInsert" onAction="IPBESRibbon_ApplyChangeList"
+                  screentip="Apply change list"
+                  supertip="Applies a change table from Copilot or Claude (columns Original and Revised), open in another document, as tracked changes." />
+        </group>
+        <group id="IPBESCleanGroup" label="Clean up">
+          <button id="IPBESRemoveComments" label="Remove IPBES comments" size="large"
+                  imageMso="ReviewDeleteComment" onAction="IPBESRibbon_RemoveComments"
+                  screentip="Remove IPBES comments"
+                  supertip="Deletes only the comments added by the IPBES macros. Other comments are kept." />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
