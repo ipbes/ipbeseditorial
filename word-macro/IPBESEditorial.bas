@@ -809,7 +809,7 @@ Public Sub IPBES_FixFormatting()
     Dim nPage As Long, nHeadings As Long, nLabels As Long, nBody As Long, nNumbers As Long
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
-    Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long
+    Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -935,7 +935,12 @@ Public Sub IPBES_FixFormatting()
                     Case "LIST"
                         nLists = nLists + 1
                     Case ""
-                        If Not IsIPBESStyle(sName) And Len(txt) > 0 And sName <> bnNormal Then NoteStyle otherStyles, sName
+                        If IsIPBESStyle(sName) Then
+                            ' already in an IPBES style: remove whole-paragraph manual font, size, colour
+                            If CleanUniformFormatting(p) Then nCleaned = nCleaned + 1
+                        ElseIf Len(txt) > 0 And sName <> bnNormal Then
+                            NoteStyle otherStyles, sName
+                        End If
                 End Select
             End If
         End If
@@ -979,6 +984,7 @@ Public Sub IPBES_FixFormatting()
     msg = msg & "Headings: " & nHeadings & IIf(nTitle > 0, " (and the title)", "") & vbCr
     msg = msg & "Body paragraphs: " & nBody & IIf(numbered, " (numbered)", " (unnumbered)") & vbCr
     If nNumbers > 0 Then msg = msg & "Typed paragraph numbers removed: " & nNumbers & vbCr
+    If nCleaned > 0 Then msg = msg & "Manual font, size or colour removed from IPBES-styled paragraphs: " & nCleaned & vbCr
     If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
     If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
     If nPage > 0 Then msg = msg & "Sections set to A4 with IPBES margins: " & nPage & vbCr
@@ -1282,6 +1288,36 @@ Private Sub ResetDirect(ByVal p As Paragraph)
     End If
     On Error GoTo 0
 End Sub
+
+' For a paragraph already in an IPBES style: removes manual font name, size, colour and
+' highlighting applied to the WHOLE paragraph (e.g. a title made red Arial 14 pt). Bold,
+' italic and underline are kept, and paragraphs with mixed formatting are not touched
+' (Word reports mixed values as wdUndefined), so word-level formatting survives.
+Private Function CleanUniformFormatting(ByVal p As Paragraph) As Boolean
+    Dim r As Range, sf As Font, changed As Boolean
+    On Error Resume Next
+    Set r = p.Range
+    Set sf = p.Style.Font
+    If sf Is Nothing Then Exit Function
+    If Len(r.Font.Name) > 0 And r.Font.Name <> sf.Name Then
+        r.Font.Name = sf.Name
+        changed = True
+    End If
+    If r.Font.Size <> wdUndefined And r.Font.Size <> sf.Size Then
+        r.Font.Size = sf.Size
+        changed = True
+    End If
+    If r.Font.Color <> wdUndefined And r.Font.Color <> sf.Color Then
+        r.Font.Color = sf.Color
+        changed = True
+    End If
+    If r.HighlightColorIndex <> wdUndefined And r.HighlightColorIndex <> wdNoHighlight Then
+        r.HighlightColorIndex = wdNoHighlight
+        changed = True
+    End If
+    On Error GoTo 0
+    CleanUniformFormatting = changed
+End Function
 
 ' "I. Introduction" -> tab, "I.", tab, "Introduction" (IPBES heading layout).
 Private Function FixHeadingLabel(ByVal doc As Document, ByVal p As Paragraph) As Boolean
