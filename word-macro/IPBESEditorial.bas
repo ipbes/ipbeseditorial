@@ -59,6 +59,12 @@ Private RuleCount As Long
 ' Report lines collected during a check
 Private ReportLines As Collection
 
+' Built-in style names, looked up once per run (TargetStyle runs for every paragraph).
+Private bnHeading1 As String, bnHeading2 As String, bnHeading3 As String, bnHeading4 As String
+Private bnTitle As String, bnCaption As String, bnListPara As String, bnListBullet As String, bnListNumber As String
+Private bnNormal As String, bnBodyText As String, bnBodyText2 As String, bnBodyText3 As String
+Private bnPlainText As String, bnNormalIndent As String
+
 ' ---------------------------------------------------------------------------
 ' Characters
 ' ---------------------------------------------------------------------------
@@ -402,7 +408,6 @@ Public Sub IPBES_SafeFixes()
     msg = total & " change(s) made with Track Changes." & vbCr & _
           "Review them (Review > Next) and reject any inside agreed text."
     MsgBox msg, vbInformation, "IPBES"
-    WriteReport doc, total, "Safe fixes"
 End Sub
 
 Public Sub IPBES_RemoveIPBESComments()
@@ -518,11 +523,27 @@ Public Sub IPBES_ApplyChangeList()
 
     SetTracking target, oldTrack
     Application.ScreenUpdating = True
-    MsgBox applied & " change(s) applied with Track Changes." & vbCr & _
-           notFound & " not found, " & ambiguous & " found more than once, " & skipped & " skipped." & vbCr & vbCr & _
-           "See the report for details.", vbInformation, "IPBES"
-    WriteReport target, applied, "Change list applied", "Status|Item|-|Rule|Text"
+    MsgBox applied & " change(s) applied with Track Changes. Review them with Review > Next." & _
+           ItemsNotApplied(), vbInformation, "IPBES"
 End Sub
+
+' Lists the change-list items that were not applied, by status, for the closing message.
+Private Function ItemsNotApplied() As String
+    Dim ln As Variant, parts() As String, nf As String, amb As String, sk As String
+    For Each ln In ReportLines
+        parts = Split(CStr(ln), vbTab)
+        If parts(0) = "NOT FOUND" Then
+            nf = nf & IIf(Len(nf) > 0, ", ", "") & parts(1)
+        ElseIf Left(parts(0), 6) = "Found " Then
+            amb = amb & IIf(Len(amb) > 0, ", ", "") & parts(1)
+        ElseIf parts(0) = "Skipped" Then
+            sk = sk & IIf(Len(sk) > 0, ", ", "") & parts(1)
+        End If
+    Next ln
+    If Len(nf) > 0 Then ItemsNotApplied = ItemsNotApplied & vbCr & vbCr & "Not found (check the original text): items " & Left(nf, 300)
+    If Len(amb) > 0 Then ItemsNotApplied = ItemsNotApplied & vbCr & vbCr & "Found more than once, marked with a comment, not applied: items " & Left(amb, 300)
+    If Len(sk) > 0 Then ItemsNotApplied = ItemsNotApplied & vbCr & vbCr & "Skipped (empty, identical or over several paragraphs): items " & Left(sk, 300)
+End Function
 
 ' True if the document holds a change list (a table or "| ... |" text lines with
 ' the headings Original and Revised).
@@ -782,12 +803,13 @@ End Sub
 Public Sub IPBES_FixFormatting()
     Dim doc As Document, ans As Long, numbered As Boolean, alreadyIPBES As Boolean
     Dim oldTrack As Boolean, oldTrackFmt As Boolean, hadTrackFmt As Boolean
+    Dim oldPagination As Boolean, oldView As Long, ur As Object
     Dim p As Paragraph, sName As String, target As String, txt As String, startBody As Long
-    Dim t As Table, msg As String
+    Dim t As Table, msg As String, tbls As Collection, ti As Long
     Dim nPage As Long, nHeadings As Long, nLabels As Long, nBody As Long, nNumbers As Long
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
-    Dim otherStyles As String
+    Dim otherStyles As String, nHeaders As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -802,9 +824,8 @@ Public Sub IPBES_FixFormatting()
     End If
 
     ans = MsgBox("IPBES formatting" & vbCr & vbCr & _
-        "Applies the IPBES Word styles, page set-up (A4, IPBES margins), heading layout and table layout." & vbCr & _
-        "Style and text changes are tracked. Page set-up and the style definitions themselves are not, " & _
-        "so work on a copy if in doubt." & vbCr & vbCr & _
+        "Applies the IPBES Word styles, page set-up (A4, IPBES margins), heading layout and table layout. " & _
+        "Changes are tracked. Page set-up and the style definitions themselves are not, so work on a copy if in doubt." & vbCr & vbCr & _
         "Is this a report with numbered paragraphs (1., 2., 3. ...)?" & vbCr & vbCr & _
         "Yes = numbered paragraphs" & vbCr & "No = unnumbered paragraphs" & vbCr & "Cancel = stop", _
         vbYesNoCancel + vbQuestion, "IPBES")
@@ -820,13 +841,19 @@ Public Sub IPBES_FixFormatting()
     If Not SetTracking(doc, True) Then Exit Sub
     On Error Resume Next
     doc.TrackFormatting = True
+    ' Speed: no screen redraw, no background repagination, draft view; one Undo step for the run
+    oldPagination = Options.Pagination
+    Options.Pagination = False
+    oldView = doc.ActiveWindow.View.Type
+    doc.ActiveWindow.View.Type = wdNormalView
+    Set ur = Application.UndoRecord
+    ur.StartCustomRecord "IPBES formatting"
+    Err.Clear
     On Error GoTo 0
-
     Application.ScreenUpdating = False
-    Set ReportLines = New Collection
+    Application.StatusBar = "IPBES formatting: preparing..."
 
-    ' Does the document already use the IPBES styles? Then plain "Normal" paragraphs
-    ' are left alone (in IPBES documents they are used on purpose, e.g. annex headers).
+    CacheBuiltinNames doc
     alreadyIPBES = UsesStyle(doc, "Normal_number") Or UsesStyle(doc, "CH1")
 
     ' 1. Style definitions from the add-in
@@ -841,17 +868,16 @@ Public Sub IPBES_FixFormatting()
 
     ' 3. Paragraphs (outside tables, after any masthead)
     startBody = BodyStart(doc)
-    ' If the body already carries typed paragraph numbers ("1.", "2." ...), number exactly
-    ' those paragraphs and restart where the typed numbers restart (e.g. in decisions).
     typedMode = numbered And (CountTypedNumbers(doc, startBody, numbered, alreadyIPBES) >= 3)
+    Set tbls = TableRanges(doc)
+    ti = 1
     For Each p In doc.Paragraphs
         If p.Range.Start >= startBody Then
-            If Not p.Range.Information(wdWithInTable) Then
+            If Not InTableFast(p.Range.Start, tbls, ti) Then
                 sName = StyleName(p)
                 txt = Trim(Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), vbTab, " "))
                 target = TargetStyle(doc, sName, txt, numbered, alreadyIPBES)
                 If target = "HCH" Then
-                    ' old UN chapter heading style: numbered -> CH1; the first unnumbered one is the title
                     If HasHeadingLabel(p) Then
                         target = "CH1"
                     ElseIf nTitle = 0 And nHeadings = 0 Then
@@ -873,6 +899,7 @@ Public Sub IPBES_FixFormatting()
                     Case "Title_table", "Title_figure"
                         p.Style = doc.Styles(target)
                         ResetDirect p
+                        NormalizeCaption doc, p, IIf(target = "Title_table", "Table", "Figure")
                         nCaptions = nCaptions + 1
                     Case "Normal_number", "Normal_No_number"
                         If Len(txt) = 0 Then
@@ -890,6 +917,7 @@ Public Sub IPBES_FixFormatting()
                             End If
                             If target = "Normal_number" Then nNumbered = nNumbered + 1
                             nBody = nBody + 1
+                            If nBody Mod 50 = 0 Then Application.StatusBar = "IPBES formatting: " & nBody & " paragraphs..."
                         End If
                     Case "LIST"
                         nLists = nLists + 1
@@ -901,6 +929,7 @@ Public Sub IPBES_FixFormatting()
     Next p
 
     ' 4. Tables (not the masthead) and the caption line above them
+    Application.StatusBar = "IPBES formatting: tables..."
     For Each t In doc.Tables
         If t.Range.Start >= startBody And t.NestingLevel = 1 Then
             If FixTableCaption(doc, t) Then nCaptions = nCaptions + 1
@@ -909,43 +938,39 @@ Public Sub IPBES_FixFormatting()
         End If
     Next t
 
-    ' Restore Track Changes settings
-    If hadTrackFmt Then
-        On Error Resume Next
-        doc.TrackFormatting = oldTrackFmt
-        On Error GoTo 0
-    End If
+    ' 5. Page headers and footers (symbol and page number, IPBES layout)
+    Application.StatusBar = "IPBES formatting: headers and footers..."
+    nHeaders = FixHeadersFooters(doc)
+
+    ' Restore settings
+    On Error Resume Next
+    If Not ur Is Nothing Then ur.EndCustomRecord
+    If hadTrackFmt Then doc.TrackFormatting = oldTrackFmt
+    doc.ActiveWindow.View.Type = oldView
+    Options.Pagination = oldPagination
+    Application.StatusBar = False
+    On Error GoTo 0
     SetTracking doc, oldTrack
     Application.ScreenUpdating = True
 
-    ReportLines.Add "Styles" & vbTab & IIf(stylesCopied, 1, 0) & vbTab & "" & vbTab & _
-        IIf(stylesCopied, "IPBES style definitions copied into the document", "Could not copy the IPBES styles (is the document protected?)") & vbTab & ""
-    If nPage > 0 Then ReportLines.Add "Page set-up" & vbTab & nPage & vbTab & "" & vbTab & "Section(s) set to A4 with IPBES margins" & vbTab & ""
-    If nTitle > 0 Then ReportLines.Add "Title" & vbTab & nTitle & vbTab & "tracked" & vbTab & "Title -> BB_Title" & vbTab & ""
-    If nHeadings > 0 Then ReportLines.Add "Headings" & vbTab & nHeadings & vbTab & "tracked" & vbTab & "Heading 1-4 -> CH1-CH4" & vbTab & ""
-    If nLabels > 0 Then ReportLines.Add "Headings" & vbTab & nLabels & vbTab & "tracked" & vbTab & "Heading numbers set in IPBES layout (tab, number, tab)" & vbTab & ""
-    If nBody > 0 Then ReportLines.Add "Paragraphs" & vbTab & nBody & vbTab & "tracked" & vbTab & _
-        "Body text -> " & IIf(numbered, "Normal_number (numbered)", "Normal_No_number") & "; manual fonts, sizes, colours and indents removed" & vbTab & ""
-    If nRestarts > 0 Then ReportLines.Add "Paragraphs" & vbTab & nRestarts & vbTab & "tracked" & vbTab & _
-        "Paragraph numbering restarted at 1 where the typed numbers restarted (for example in decisions): check these" & vbTab & ""
-    If typedMode Then ReportLines.Add "Note" & vbTab & "" & vbTab & "" & vbTab & _
-        "Only paragraphs that had a typed number were numbered; other body paragraphs are unnumbered (Normal_No_number)" & vbTab & ""
-    If Len(otherStyles) > 0 Then ReportLines.Add "To do" & vbTab & "" & vbTab & "" & vbTab & _
-        "Paragraphs in these styles were left unchanged: " & Replace(otherStyles, "|", "; ") & vbTab & ""
-    If nNumbers > 0 Then ReportLines.Add "Paragraphs" & vbTab & nNumbers & vbTab & "tracked" & vbTab & "Typed paragraph numbers removed (the style numbers paragraphs)" & vbTab & ""
-    If nCaptions > 0 Then ReportLines.Add "Captions" & vbTab & nCaptions & vbTab & "tracked" & vbTab & "Table/figure captions -> Title_table / Title_figure" & vbTab & ""
-    If nTables > 0 Then ReportLines.Add "Tables" & vbTab & nTables & vbTab & "" & vbTab & _
-        "Indented to the text, horizontal rules only, no shading, italic column heads, numbers right-aligned" & vbTab & ""
-    If nEmpty > 0 Then ReportLines.Add "To do" & vbTab & nEmpty & vbTab & "" & vbTab & "Empty paragraphs left in place: remove them if they only add space" & vbTab & ""
-    If nLists > 0 Then ReportLines.Add "To do" & vbTab & nLists & vbTab & "" & vbTab & _
-        "List paragraphs left unchanged: IPBES uses lettered subparagraphs (a), (b), (i)" & vbTab & ""
-    If alreadyIPBES Then ReportLines.Add "Note" & vbTab & "" & vbTab & "" & vbTab & _
-        "The document already uses IPBES styles, so paragraphs in style Normal were left unchanged" & vbTab & ""
-    ReportLines.Add "Next" & vbTab & "" & vbTab & "" & vbTab & _
-        "Run Check document for heading numbering gaps, lone subheadings and the masthead" & vbTab & ""
-
-    WriteReport doc, nTitle + nHeadings + nLabels + nBody + nNumbers + nCaptions + nTables + nPage, _
-        "Formatting", "Area|Count|Tracked|What was done|-"
+    ' Short summary; the tracked changes are the detailed record
+    msg = "IPBES formatting done. Review the tracked changes (Review > Next); Ctrl+Z undoes the whole run." & vbCr & vbCr
+    If Not stylesCopied Then msg = msg & "! Could not copy the IPBES styles (is the document protected?)" & vbCr
+    msg = msg & "Headings: " & nHeadings & IIf(nTitle > 0, " (and the title)", "") & vbCr
+    msg = msg & "Body paragraphs: " & nBody & IIf(numbered, " (numbered)", " (unnumbered)") & vbCr
+    If nNumbers > 0 Then msg = msg & "Typed paragraph numbers removed: " & nNumbers & vbCr
+    If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
+    If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
+    If nPage > 0 Then msg = msg & "Sections set to A4 with IPBES margins: " & nPage & vbCr
+    If nHeaders > 0 Then msg = msg & "Page headers and footers rebuilt (symbol, page numbers): " & nHeaders & vbCr Else _
+        msg = msg & "Page headers left as they were (no IPBES/.. symbol found)" & vbCr
+    If nEmpty + nLists > 0 Or Len(otherStyles) > 0 Then msg = msg & vbCr & "Left for you:" & vbCr
+    If nEmpty > 0 Then msg = msg & "- " & nEmpty & " empty paragraph(s)" & vbCr
+    If nLists > 0 Then msg = msg & "- " & nLists & " list paragraph(s): IPBES uses (a), (b), (i)" & vbCr
+    If Len(otherStyles) > 0 Then msg = msg & "- unchanged styles: " & Left(Replace(otherStyles, "|", "; "), 200) & vbCr
+    If alreadyIPBES Then msg = msg & vbCr & "The document already used IPBES styles, so Normal paragraphs were left as they were." & vbCr
+    msg = msg & vbCr & "Next: run Check document for heading numbering, lone subheadings and the masthead."
+    MsgBox msg, vbInformation, "IPBES"
 End Sub
 
 ' True if the add-in itself holds the IPBES styles (added by tools/prepare_addin.py).
@@ -962,10 +987,10 @@ Private Function AddinHasStyles() As Boolean
 End Function
 
 ' True if at least one paragraph uses the given style.
-Private Function UsesStyle(ByVal doc As Document, ByVal styleName As String) As Boolean
+Private Function UsesStyle(ByVal doc As Document, ByVal sty As String) As Boolean
     Dim rng As Range, st As Style
     On Error Resume Next
-    Set st = doc.Styles(styleName)
+    Set st = doc.Styles(sty)
     On Error GoTo 0
     If st Is Nothing Then Exit Function
     Set rng = doc.Content
@@ -979,6 +1004,36 @@ Private Function UsesStyle(ByVal doc As Document, ByVal styleName As String) As 
         .MatchWildcards = False
     End With
     UsesStyle = rng.Find.Execute
+End Function
+
+Private Sub CacheBuiltinNames(ByVal doc As Document)
+    bnHeading1 = BuiltinName(doc, wdStyleHeading1): bnHeading2 = BuiltinName(doc, wdStyleHeading2)
+    bnHeading3 = BuiltinName(doc, wdStyleHeading3): bnHeading4 = BuiltinName(doc, wdStyleHeading4)
+    bnTitle = BuiltinName(doc, wdStyleTitle): bnCaption = BuiltinName(doc, wdStyleCaption)
+    bnListPara = BuiltinName(doc, wdStyleListParagraph): bnListBullet = BuiltinName(doc, wdStyleListBullet)
+    bnListNumber = BuiltinName(doc, wdStyleListNumber): bnNormal = BuiltinName(doc, wdStyleNormal)
+    bnBodyText = BuiltinName(doc, wdStyleBodyText): bnBodyText2 = BuiltinName(doc, wdStyleBodyText2)
+    bnBodyText3 = BuiltinName(doc, wdStyleBodyText3): bnPlainText = BuiltinName(doc, wdStylePlainText)
+    bnNormalIndent = BuiltinName(doc, wdStyleNormalIndent)
+End Sub
+
+' Ranges of the top-level tables, in document order. Word keeps Range objects up to date
+' as text is inserted or deleted, so they stay valid while paragraphs are edited.
+Private Function TableRanges(ByVal doc As Document) As Collection
+    Dim c As New Collection, t As Table
+    For Each t In doc.Tables
+        c.Add t.Range
+    Next t
+    Set TableRanges = c
+End Function
+
+' Fast replacement for Range.Information(wdWithInTable) when positions are visited in order.
+Private Function InTableFast(ByVal pos As Long, ByVal tbls As Collection, ByRef ti As Long) As Boolean
+    Do While ti <= tbls.Count
+        If tbls(ti).End > pos Then Exit Do
+        ti = ti + 1
+    Loop
+    If ti <= tbls.Count Then InTableFast = (tbls(ti).Start <= pos)
 End Function
 
 ' Local name of a built-in style (works in any Word language).
@@ -1003,20 +1058,20 @@ Private Function TargetStyle(ByVal doc As Document, ByVal sName As String, ByVal
     If sName Like "_ H_2*" Or sName Like "_ H_3*" Then TargetStyle = "CH3": Exit Function
     If sName Like "_ H_4*" Or sName Like "_ H_5*" Then TargetStyle = "CH4": Exit Function
     If sName Like "__Single Txt*" Or sName Like "_ Single Txt*" Or sName Like "SingleTxt*" Then TargetStyle = body: Exit Function
+    If Len(bnNormal) = 0 Then CacheBuiltinNames doc
     Select Case sName
-        Case BuiltinName(doc, wdStyleHeading1): TargetStyle = "CH1"
-        Case BuiltinName(doc, wdStyleHeading2): TargetStyle = "CH2"
-        Case BuiltinName(doc, wdStyleHeading3): TargetStyle = "CH3"
-        Case BuiltinName(doc, wdStyleHeading4): TargetStyle = "CH4"
-        Case BuiltinName(doc, wdStyleTitle): TargetStyle = "BB_Title"
-        Case BuiltinName(doc, wdStyleCaption)
+        Case bnHeading1: TargetStyle = "CH1"
+        Case bnHeading2: TargetStyle = "CH2"
+        Case bnHeading3: TargetStyle = "CH3"
+        Case bnHeading4: TargetStyle = "CH4"
+        Case bnTitle: TargetStyle = "BB_Title"
+        Case bnCaption
             If LCase(Left(txt, 6)) = "figure" Then TargetStyle = "Title_figure" Else TargetStyle = "Title_table"
-        Case BuiltinName(doc, wdStyleListParagraph), BuiltinName(doc, wdStyleListBullet), BuiltinName(doc, wdStyleListNumber)
+        Case bnListPara, bnListBullet, bnListNumber
             TargetStyle = "LIST"
-        Case BuiltinName(doc, wdStyleNormal)
+        Case bnNormal
             If Not alreadyIPBES Then TargetStyle = body
-        Case BuiltinName(doc, wdStyleBodyText), BuiltinName(doc, wdStyleBodyText2), BuiltinName(doc, wdStyleBodyText3), _
-             BuiltinName(doc, wdStylePlainText), BuiltinName(doc, wdStyleNormalIndent), "No Spacing", "Normal (Web)", "Default"
+        Case bnBodyText, bnBodyText2, bnBodyText3, bnPlainText, bnNormalIndent, "No Spacing", "Normal (Web)", "Default"
             TargetStyle = body
     End Select
 End Function
@@ -1026,6 +1081,7 @@ End Function
 Private Function BodyStart(ByVal doc As Document) As Long
     Dim i As Long, txt As String, p As Paragraph, sName As String, firstTableEnd As Long
     If doc.Tables.Count = 0 Then Exit Function
+    If Len(bnNormal) = 0 Then CacheBuiltinNames doc
     txt = UCase(Norm(doc.Tables(1).Range.Text))
     If doc.Tables(1).Range.Start > 200 Or InStr(txt, "UNITED") = 0 Then Exit Function
     firstTableEnd = doc.Tables(1).Range.End
@@ -1035,7 +1091,7 @@ Private Function BodyStart(ByVal doc As Document) As Long
             If Not p.Range.Information(wdWithInTable) Then
                 sName = StyleName(p)
                 If sName = "BB_Title" Or sName = "CH1" Or sName Like "_ H _Ch*" Or sName Like "_ H_Ch*" Or sName Like "_ H __M*" _
-                   Or sName = BuiltinName(doc, wdStyleTitle) Or sName = BuiltinName(doc, wdStyleHeading1) _
+                   Or sName = bnTitle Or sName = bnHeading1 _
                    Or Left(Trim(p.Range.Text), 10) = "Report of " Then
                     BodyStart = p.Range.Start
                     Exit Function
@@ -1144,10 +1200,12 @@ End Function
 ' Number of body paragraphs that start with a typed paragraph number.
 Private Function CountTypedNumbers(ByVal doc As Document, ByVal startBody As Long, ByVal numbered As Boolean, _
                                    ByVal alreadyIPBES As Boolean) As Long
-    Dim p As Paragraph, n As Long, v As Long, tg As String, txt As String
+    Dim p As Paragraph, n As Long, v As Long, tg As String, txt As String, tbls As Collection, ti As Long
+    Set tbls = TableRanges(doc)
+    ti = 1
     For Each p In doc.Paragraphs
         If p.Range.Start >= startBody Then
-            If Not p.Range.Information(wdWithInTable) Then
+            If Not InTableFast(p.Range.Start, tbls, ti) Then
                 txt = Trim(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""))
                 tg = TargetStyle(doc, StyleName(p), txt, numbered, alreadyIPBES)
                 If tg = "Normal_number" Or tg = "Normal_No_number" Then
@@ -1185,12 +1243,12 @@ End Function
 
 ' True if the text is a caption such as "Table 1", "Table 1: Title", "Table IV. Title",
 ' "Table 1 Title" or "Table A.1", and not a sentence such as "Table 1 presents ...".
-Private Function IsCaption(ByVal txt As String, ByVal word As String) As Boolean
+Private Function IsCaption(ByVal txt As String, ByVal capWord As String) As Boolean
     Dim rest As String, i As Long, c As String
     txt = Trim(Replace(Replace(txt, Chr(11), " "), vbTab, " "))
     If Len(txt) > 200 Then Exit Function
-    If Left(txt, Len(word) + 1) <> word & " " Then Exit Function
-    rest = Mid(txt, Len(word) + 2)
+    If Left(txt, Len(capWord) + 1) <> capWord & " " Then Exit Function
+    rest = Mid(txt, Len(capWord) + 2)
     ' the label: digits, Roman numerals, or A.1
     i = 1
     Do While i <= Len(rest)
@@ -1226,12 +1284,19 @@ End Sub
 
 ' A paragraph "Table 1: Title" just above a table becomes "Table 1" + line break + "Title" in Title_table.
 Private Function FixTableCaption(ByVal doc As Document, ByVal t As Table) As Boolean
-    Dim pp As Paragraph, txt As String, num As String, rest As String, i As Long, rng As Range
+    Dim pp As Paragraph, txt As String, k As Long
     If t.Range.Start = 0 Then Exit Function
     Set pp = doc.Range(0, t.Range.Start).Paragraphs.Last
-    If pp.Range.Information(wdWithInTable) Then Exit Function
+    ' skip up to two empty paragraphs between the caption and the table
+    For k = 1 To 2
+        If pp Is Nothing Then Exit Function
+        If pp.Range.Information(wdWithInTable) Then Exit Function
+        If Len(CleanCaptionText(pp.Range.Text)) > 0 Then Exit For
+        Set pp = pp.Previous
+    Next k
+    If pp Is Nothing Then Exit Function
     ' a headnote such as "(United States dollars)" between the caption and the table
-    txt = Trim(Replace(pp.Range.Text, vbCr, ""))
+    txt = CleanCaptionText(pp.Range.Text)
     If Left(txt, 1) = "(" And Right(txt, 1) = ")" And Len(txt) < 80 Then
         If StyleName(pp) <> "Title_table" Then
             pp.Style = doc.Styles("Title_table")
@@ -1242,28 +1307,156 @@ Private Function FixTableCaption(ByVal doc As Document, ByVal t As Table) As Boo
         If pp Is Nothing Then Exit Function
         If pp.Range.Information(wdWithInTable) Then Exit Function
     End If
-    If StyleName(pp) = "Title_table" Then Exit Function
-    txt = Trim(Replace(pp.Range.Text, vbCr, ""))
-    If Not IsCaption(Replace(txt, Chr(11), " "), "Table") Then Exit Function
-    i = 7
-    Do While i <= Len(txt)
-        If Mid(txt, i, 1) Like "[!0-9A-Z.]" Then Exit Do
-        i = i + 1
-    Loop
-    num = Mid(txt, 7, i - 7)
-    If Right(num, 1) = "." Then num = Left(num, Len(num) - 1)
-    rest = Trim(Mid(txt, i))
-    Do While Len(rest) > 0 And (Left(rest, 1) = ":" Or Left(rest, 1) = "." Or Left(rest, 1) = "-" Or Left(rest, 1) = ChrW(8211))
-        rest = Trim(Mid(rest, 2))
-    Loop
-    pp.Style = doc.Styles("Title_table")
-    ResetDirect pp
-    If Len(rest) > 0 Then
-        Set rng = doc.Range(pp.Range.Start, pp.Range.End - 1)
-        rng.Text = "Table " & num & Chr(11) & rest
+    If Not IsCaption(CleanCaptionText(pp.Range.Text), "Table") Then Exit Function
+    If StyleName(pp) <> "Title_table" Then
+        pp.Style = doc.Styles("Title_table")
+        ResetDirect pp
     End If
+    NormalizeCaption doc, pp, "Table"
     FixTableCaption = True
 End Function
+
+' Caption text with line breaks turned into spaces and trimmed.
+Private Function CleanCaptionText(ByVal t As String) As String
+    t = Replace(Replace(Replace(t, vbCr, ""), Chr(11), " "), vbTab, " ")
+    Do While InStr(t, "  ") > 0
+        t = Replace(t, "  ", " ")
+    Loop
+    CleanCaptionText = Trim(t)
+End Function
+
+' Lays out a caption as "Table 3" + line break + title (IPBES layout), at the text indent.
+' The text is rewritten only if it differs, so unchanged captions get no tracked change.
+Private Sub NormalizeCaption(ByVal doc As Document, ByVal p As Paragraph, ByVal capWord As String)
+    Dim txt As String, rest As String, num As String, i As Long, c As String, want As String, rng As Range
+    txt = CleanCaptionText(p.Range.Text)
+    If Left(txt, Len(capWord) + 1) <> capWord & " " Then Exit Sub
+    rest = Mid(txt, Len(capWord) + 2)
+    i = 1
+    Do While i <= Len(rest)
+        c = Mid(rest, i, 1)
+        If Not (c Like "[0-9IVXA.]") Then Exit Do
+        i = i + 1
+    Loop
+    num = Left(rest, i - 1)
+    If Right(num, 1) = "." Then num = Left(num, Len(num) - 1)
+    rest = Trim(Mid(rest, i))
+    Do While Len(rest) > 0 And (Left(rest, 1) = ":" Or Left(rest, 1) = "." Or Left(rest, 1) = "-" Or _
+                               Left(rest, 1) = ChrW(8211) Or Left(rest, 1) = ChrW(8212))
+        rest = Trim(Mid(rest, 2))
+    Loop
+    want = capWord & " " & num
+    If Len(rest) > 0 Then want = want & Chr(11) & rest
+    Set rng = doc.Range(p.Range.Start, p.Range.End - 1)
+    If rng.Text <> want Then rng.Text = want
+    p.LeftIndent = CentimetersToPoints(2.2)
+    p.FirstLineIndent = 0
+End Sub
+
+' Rebuilds page headers and footers in the IPBES layout: the document symbol in
+' Header-pool (left on even pages, right on odd pages) and the page number in
+' Footer-pool. The first-page header and footer (masthead, job number) are kept.
+' Returns the number of headers and footers rebuilt (0 if no symbol was found).
+Private Function FixHeadersFooters(ByVal doc As Document) As Long
+    Dim symbol As String, sec As Section, hf As HeaderFooter, i As Long, n As Long, kinds As Variant, k As Variant
+    symbol = FindSymbol(doc)
+    If Len(symbol) = 0 Then Exit Function
+    On Error Resume Next
+    doc.PageSetup.OddAndEvenPagesHeaderFooter = True
+    kinds = Array(wdHeaderFooterPrimary, wdHeaderFooterEvenPages)
+    For Each sec In doc.Sections
+        For Each k In kinds
+            Set hf = sec.Headers(k)
+            If sec.Index = 1 Or Not hf.LinkToPrevious Then
+                SetHeaderFooterText hf, symbol, "Header-pool", (k = wdHeaderFooterPrimary), False
+                n = n + 1
+            End If
+            Set hf = sec.Footers(k)
+            If sec.Index = 1 Or Not hf.LinkToPrevious Then
+                SetHeaderFooterText hf, "", "Footer-pool", (k = wdHeaderFooterPrimary), True
+                n = n + 1
+            End If
+        Next k
+    Next sec
+    On Error GoTo 0
+    FixHeadersFooters = n
+End Function
+
+Private Sub SetHeaderFooterText(ByVal hf As HeaderFooter, ByVal txt As String, ByVal sty As String, _
+                                ByVal alignRight As Boolean, ByVal pageNumber As Boolean)
+    Dim r As Range, t As Long, i As Long, shp As Shape, story As Long, secIdx As Long
+    Set r = hf.Range
+    story = r.StoryType
+    secIdx = r.Sections(1).Index
+    ' lines or logos drawn as shapes in this header/footer (HeaderFooter.Shapes lists all
+    ' header/footer shapes of the document, so check where each one is anchored)
+    On Error Resume Next
+    For i = hf.Shapes.Count To 1 Step -1
+        Set shp = hf.Shapes(i)
+        If shp.Anchor.StoryType = story Then
+            If shp.Anchor.Sections(1).Index = secIdx Then shp.Delete
+        End If
+    Next i
+    On Error GoTo 0
+    For t = r.Tables.Count To 1 Step -1
+        r.Tables(t).Delete
+    Next t
+    Set r = hf.Range
+    r.Text = txt
+    Set r = hf.Range
+    r.Style = r.Document.Styles(sty)
+    r.ParagraphFormat.Reset
+    r.Font.Reset
+    r.ParagraphFormat.Alignment = IIf(alignRight, wdAlignParagraphRight, wdAlignParagraphLeft)
+    If pageNumber Then
+        Set r = hf.Range
+        r.Collapse wdCollapseStart
+        r.Fields.Add r, wdFieldPage
+    End If
+End Sub
+
+' The document symbol (IPBES/../..) from the page headers or the masthead.
+Private Function FindSymbol(ByVal doc As Document) As String
+    Dim sec As Section, i As Long, s As String
+    On Error Resume Next
+    For Each sec In doc.Sections
+        For i = 1 To 3
+            s = ExtractSymbol(Norm(sec.Headers(i).Range.Text))
+            If Len(s) > 0 Then FindSymbol = s: Exit Function
+        Next i
+    Next sec
+    If doc.Tables.Count > 0 Then
+        For i = 1 To MinL(4, doc.Tables.Count)
+            s = ExtractSymbol(Norm(doc.Tables(i).Range.Text))
+            If Len(s) > 0 Then FindSymbol = s: Exit Function
+        Next i
+    End If
+    On Error GoTo 0
+End Function
+
+' Shrinks a table proportionally if, after the 2.2 cm indent, it is wider than the text column.
+Private Sub FitTableToText(ByVal t As Table)
+    Dim avail As Single, c As Cell, widths() As Single, maxW As Single, r As Long, f As Single
+    On Error Resume Next
+    With t.Range.Sections(1).PageSetup
+        avail = .PageWidth - .LeftMargin - .RightMargin - CentimetersToPoints(2.2)
+    End With
+    ReDim widths(1 To t.Rows.Count + 1)
+    For Each c In t.Range.Cells
+        r = c.RowIndex
+        If r >= 1 And r <= UBound(widths) Then widths(r) = widths(r) + c.Width
+    Next c
+    For r = 1 To UBound(widths)
+        If widths(r) > maxW Then maxW = widths(r)
+    Next r
+    If maxW <= avail + 1 Or maxW <= 0 Then Exit Sub
+    f = avail / maxW
+    t.AllowAutoFit = False
+    For Each c In t.Range.Cells
+        c.Width = c.Width * f
+    Next c
+    On Error GoTo 0
+End Sub
 
 ' IPBES table layout: indented to the text, horizontal rules only (top, under the
 ' column heads, bottom), no shading, italic column heads, numbers right-aligned.
@@ -1271,6 +1464,7 @@ Private Sub FormatTable(ByVal doc As Document, ByVal t As Table)
     Dim c As Cell, txt As String, last As Long
     On Error Resume Next
     t.Rows.LeftIndent = CentimetersToPoints(2.2)
+    FitTableToText t
     t.Borders.Enable = False
     t.Shading.BackgroundPatternColor = wdColorAutomatic
     For Each c In t.Range.Cells
@@ -1761,7 +1955,7 @@ End Function
 
 Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title As String, _
                         Optional ByVal headers As String = "Category|Count|Safe fix|Rule|Example")
-    Dim rep As Document, rng As Range, i As Long, tbl As Table, parts() As String, line As Variant, h() As String
+    Dim rep As Document, rng As Range, i As Long, tbl As Table, parts() As String, ln As Variant, h() As String
     Set rep = Documents.Add
     Set rng = rep.Content
     rng.Text = "IPBES " & title & ": " & src.Name & vbCr & _
@@ -1782,14 +1976,14 @@ Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title 
     Next i
     tbl.Rows(1).Range.Font.Bold = True
     i = 1
-    For Each line In ReportLines
+    For Each ln In ReportLines
         i = i + 1
-        parts = Split(CStr(line), vbTab)
+        parts = Split(CStr(ln), vbTab)
         tbl.Cell(i, 1).Range.Text = parts(0)
         tbl.Cell(i, 2).Range.Text = parts(1)
         tbl.Cell(i, 3).Range.Text = parts(2)
         tbl.Cell(i, 4).Range.Text = parts(3)
         If UBound(parts) >= 4 Then tbl.Cell(i, 5).Range.Text = parts(4)
-    Next line
+    Next ln
     rep.Saved = True
 End Sub
