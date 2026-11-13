@@ -320,6 +320,7 @@ See `report-structure.md` section 1. Check the masthead only when the document h
   - summaries or front matter
   - the text of decisions in the report, which have their own numbered operative paragraphs
   - agenda lists, which use Normal_No_number with their own numbering
+- **No empty paragraphs for spacing.** The IPBES styles set the space before and after each paragraph, heading and table title. Delete empty spacer paragraphs. Keep one only where two tables would otherwise merge.
 - **Subparagraph sequence:** (a), (b), (c), then (i), (ii), (iii), then a., b., c., then i., ii., iii.
 - **Lettered vs bulleted lists.** Prefer lettered subparagraphs to bullets, because they can be cross-referenced.
 - **Chapeau and punctuation.** A chapeau ends with a colon. Each subparagraph ends with a semicolon, the second to last adds "and" or "or", and the last ends with a full stop.

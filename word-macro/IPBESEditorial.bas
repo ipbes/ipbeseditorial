@@ -833,6 +833,7 @@ Public Sub IPBES_FixFormatting()
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
     Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long, inRestart As Boolean
+    Dim empties As New Collection, nDeleted As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -911,6 +912,10 @@ Public Sub IPBES_FixFormatting()
         End If
         If p.Range.Start >= startBody Then
             If Not InTableFast(p.Range.Start, tbls, ti) Then
+              If IsEmptyParagraph(p) Then
+                ' spacer paragraph: removed at the end (the IPBES styles provide the spacing)
+                empties.Add p.Range
+              Else
                 sName = StyleName(p)
                 txt = Trim(Replace(Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), Chr(12), ""), vbTab, " "))
                 target = TargetStyle(doc, sName, txt, numbered, alreadyIPBES)
@@ -972,9 +977,14 @@ Public Sub IPBES_FixFormatting()
                             NoteStyle otherStyles, sName
                         End If
                 End Select
+              End If
             End If
         End If
     Next p
+
+    ' 3b. Empty spacer paragraphs (tracked deletions)
+    Application.StatusBar = "IPBES formatting: removing empty paragraphs..."
+    nDeleted = DeleteEmptyParagraphs(doc, empties, nEmpty)
 
     ' 4. Tables (not the masthead) and the caption line above them
     iTable = 0
@@ -1016,6 +1026,7 @@ Public Sub IPBES_FixFormatting()
     msg = msg & "Headings: " & nHeadings & IIf(nTitle > 0, " (and the title)", "") & vbCr
     msg = msg & "Body paragraphs: " & nBody & IIf(numbered, " (numbered)", " (unnumbered)") & vbCr
     If nNumbers > 0 Then msg = msg & "Typed paragraph numbers removed: " & nNumbers & vbCr
+    If nDeleted > 0 Then msg = msg & "Empty spacer paragraphs removed: " & nDeleted & vbCr
     If nCleaned > 0 Then msg = msg & "Manual font, size or colour removed from IPBES-styled paragraphs: " & nCleaned & vbCr
     If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
     If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
@@ -1026,7 +1037,7 @@ Public Sub IPBES_FixFormatting()
         msg = msg & "Page headers left as they were (no IPBES/.. symbol found)" & vbCr
     End If
     If nEmpty + nLists > 0 Or Len(otherStyles) > 0 Then msg = msg & vbCr & "Left for you:" & vbCr
-    If nEmpty > 0 Then msg = msg & "- " & nEmpty & " empty paragraph(s)" & vbCr
+    If nEmpty > 0 Then msg = msg & "- " & nEmpty & " empty paragraph(s) kept (between two tables, or holding a line break)" & vbCr
     If nLists > 0 Then msg = msg & "- " & nLists & " list paragraph(s): IPBES uses (a), (b), (i)" & vbCr
     If Len(otherStyles) > 0 Then msg = msg & "- unchanged styles: " & Left(Replace(otherStyles, "|", "; "), 200) & vbCr
     If alreadyIPBES Then msg = msg & vbCr & "The document already used the IPBES styles: its style definitions, headers, " & _
@@ -1323,6 +1334,43 @@ Private Sub ResetDirect(ByVal p As Paragraph)
     End If
     On Error GoTo 0
 End Sub
+
+' True for a paragraph with no content other than spaces or tabs (no line break, picture or field).
+Private Function IsEmptyParagraph(ByVal p As Paragraph) As Boolean
+    Dim t As String
+    t = Replace(Replace(Replace(Replace(p.Range.Text, vbCr, ""), " ", ""), vbTab, ""), ChrW(160), "")
+    If Len(t) > 0 Then Exit Function
+    If p.Range.InlineShapes.Count > 0 Then Exit Function
+    If p.Range.Fields.Count > 0 Then Exit Function
+    IsEmptyParagraph = True
+End Function
+
+' Deletes the collected empty paragraphs (last first). Keeps the last paragraph of the document
+' and an empty paragraph between two tables (deleting it would merge the tables).
+' Returns the number deleted; kept is set to the number kept.
+Private Function DeleteEmptyParagraphs(ByVal doc As Document, ByVal empties As Collection, ByRef kept As Long) As Long
+    Dim i As Long, r As Range, prevTable As Boolean, nextTable As Boolean, n As Long
+    On Error Resume Next
+    For i = empties.Count To 1 Step -1
+        Set r = empties(i)
+        prevTable = False: nextTable = False
+        If r.End >= doc.Content.End - 1 Then
+            kept = kept + 1
+        Else
+            If r.Start > 0 Then prevTable = doc.Range(r.Start - 1, r.Start).Information(wdWithInTable)
+            nextTable = doc.Range(r.End, r.End + 1).Information(wdWithInTable)
+            If prevTable And nextTable Then
+                kept = kept + 1
+            Else
+                r.Delete
+                n = n + 1
+                If n Mod 50 = 0 Then DoEvents
+            End If
+        End If
+    Next i
+    On Error GoTo 0
+    DeleteEmptyParagraphs = n
+End Function
 
 ' For a paragraph already in an IPBES style: removes manual font name, size, colour and
 ' highlighting applied to the WHOLE paragraph (e.g. a title made red Arial 14 pt). Bold,
