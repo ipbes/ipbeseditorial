@@ -832,7 +832,7 @@ Public Sub IPBES_FixFormatting()
     Dim nPage As Long, nHeadings As Long, nLabels As Long, nBody As Long, nNumbers As Long
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
-    Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long
+    Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long, inRestart As Boolean
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -912,7 +912,7 @@ Public Sub IPBES_FixFormatting()
         If p.Range.Start >= startBody Then
             If Not InTableFast(p.Range.Start, tbls, ti) Then
                 sName = StyleName(p)
-                txt = Trim(Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), vbTab, " "))
+                txt = Trim(Replace(Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), Chr(12), ""), vbTab, " "))
                 target = TargetStyle(doc, sName, txt, numbered, alreadyIPBES)
                 If target = "HCH" Then
                     If HasHeadingLabel(p) Then
@@ -949,9 +949,15 @@ Public Sub IPBES_FixFormatting()
                             If typedMode And typed = 0 Then target = "Normal_No_number"
                             p.Style = doc.Styles(target)
                             ResetDirect p
-                            If typedMode And typed = 1 And nNumbered > 0 Then
-                                RestartNumbering p
-                                nRestarts = nRestarts + 1
+                            If typedMode And target = "Normal_number" Then
+                                If typed = 1 And nNumbered > 0 Then
+                                    ' typed numbers start again at 1 (e.g. a decision): new number sequence
+                                    StartListBlock doc, p, False
+                                    nRestarts = nRestarts + 1
+                                    inRestart = True
+                                ElseIf inRestart Then
+                                    StartListBlock doc, p, True
+                                End If
                             End If
                             If target = "Normal_number" Then nNumbered = nNumbered + 1
                             nBody = nBody + 1
@@ -996,6 +1002,8 @@ Public Sub IPBES_FixFormatting()
     If Not ur Is Nothing Then ur.EndCustomRecord
     If hadTrackFmt Then doc.TrackFormatting = oldTrackFmt
     doc.ActiveWindow.View.Type = oldView
+    ' Simple Markup: Word does not have to draw a balloon for every tracked formatting change
+    doc.ActiveWindow.View.RevisionsFilter.Markup = wdRevisionsMarkupSimple
     Options.Pagination = oldPagination
     Application.StatusBar = False
     On Error GoTo 0
@@ -1023,7 +1031,8 @@ Public Sub IPBES_FixFormatting()
     If Len(otherStyles) > 0 Then msg = msg & "- unchanged styles: " & Left(Replace(otherStyles, "|", "; "), 200) & vbCr
     If alreadyIPBES Then msg = msg & vbCr & "The document already used the IPBES styles: its style definitions, headers, " & _
         "footers, table layout and Normal paragraphs were kept; only other paragraphs, captions and over-wide tables were changed." & vbCr
-    msg = msg & vbCr & "Next: run Check document for heading numbering, lone subheadings and the masthead."
+    msg = msg & vbCr & "Next: run Check document for heading numbering, lone subheadings, captions and the masthead." & vbCr & _
+        "The view is set to Simple Markup (faster); Review > All Markup shows each change."
     MsgBox msg, vbInformation, "IPBES"
 End Sub
 
@@ -1238,29 +1247,31 @@ End Function
 ' Start of the document body: after the masthead (tables, session block and any stray
 ' lines), i.e. at the first title or heading after the first table.
 Private Function BodyStart(ByVal doc As Document) As Long
-    Dim i As Long, txt As String, p As Paragraph, sName As String, firstTableEnd As Long
-    If doc.Tables.Count = 0 Then Exit Function
+    ' The masthead (tables, or session lines under a masthead in the page header) runs up to
+    ' the first title or heading, provided everything before it consists of short lines.
+    Dim p As Paragraph, sName As String, k As Long, i As Long, longText As Boolean
     If Len(bnNormal) = 0 Then CacheBuiltinNames doc
-    txt = UCase(Norm(doc.Tables(1).Range.Text))
-    If doc.Tables(1).Range.Start > 200 Or InStr(txt, "UNITED") = 0 Then Exit Function
-    firstTableEnd = doc.Tables(1).Range.End
     For Each p In doc.Paragraphs
-        If p.Range.Start > 8000 Then Exit For
-        If p.Range.Start >= firstTableEnd Then
-            If Not p.Range.Information(wdWithInTable) Then
-                sName = StyleName(p)
-                If sName = "BB_Title" Or sName = "CH1" Or sName Like "_ H _Ch*" Or sName Like "_ H_Ch*" Or sName Like "_ H __M*" _
-                   Or sName = bnTitle Or sName = bnHeading1 _
-                   Or Left(Trim(p.Range.Text), 10) = "Report of " Then
-                    BodyStart = p.Range.Start
-                    Exit Function
-                End If
-            End If
+        k = k + 1
+        If k > 60 Or p.Range.Start > 8000 Then Exit For
+        sName = StyleName(p)
+        If sName = "BB_Title" Or sName = "CH1" Or sName Like "_ H _Ch*" Or sName Like "_ H_Ch*" Or sName Like "_ H __M*" _
+           Or sName = bnTitle Or sName = bnHeading1 Or Left(Trim(p.Range.Text), 10) = "Report of " Then
+            If Not longText Then BodyStart = p.Range.Start
+            Exit Function
+        End If
+        If Not p.Range.Information(wdWithInTable) Then
+            If Len(p.Range.Text) > 150 Then longText = True
         End If
     Next p
-    For i = 1 To MinL(4, doc.Tables.Count)
-        If doc.Tables(i).Range.Start < 3000 Then BodyStart = doc.Tables(i).Range.End
-    Next i
+    ' no title found: skip masthead tables at the very start, if any
+    If doc.Tables.Count > 0 Then
+        If doc.Tables(1).Range.Start < 200 And InStr(UCase(Norm(doc.Tables(1).Range.Text)), "UNITED") > 0 Then
+            For i = 1 To MinL(4, doc.Tables.Count)
+                If doc.Tables(i).Range.Start < 3000 Then BodyStart = doc.Tables(i).Range.End
+            Next i
+        End If
+    End If
 End Function
 
 ' A4 and IPBES margins for every section. Returns the number of sections changed.
@@ -1410,13 +1421,15 @@ Private Function CountTypedNumbers(ByVal doc As Document, ByVal startBody As Lon
 End Function
 
 ' Restarts the paragraph numbering at 1 from this paragraph onwards.
-Private Sub RestartNumbering(ByVal p As Paragraph)
+Private Sub StartListBlock(ByVal doc As Document, ByVal p As Paragraph, ByVal continuePrevious As Boolean)
+    ' continuePrevious = False: this paragraph starts a new number sequence at 1;
+    ' True: it continues the sequence started by the latest restart.
     Dim lt As ListTemplate
     On Error Resume Next
-    Set lt = p.Range.ListFormat.ListTemplate
+    Set lt = doc.Styles("Normal_number").ListTemplate
     If lt Is Nothing Then Exit Sub
-    p.Range.ListFormat.ApplyListTemplate ListTemplate:=lt, ContinuePreviousList:=False, _
-        ApplyTo:=wdListApplyToThisPointForward
+    p.Range.ListFormat.ApplyListTemplateWithLevel ListTemplate:=lt, ContinuePreviousList:=continuePrevious, _
+        ApplyTo:=wdListApplyToSelection, DefaultListBehavior:=wdWord10ListBehavior, ApplyLevel:=1
     On Error GoTo 0
 End Sub
 
@@ -1437,7 +1450,7 @@ End Function
 ' "Table 1 Title" or "Table A.1", and not a sentence such as "Table 1 presents ...".
 Private Function IsCaption(ByVal txt As String, ByVal capWord As String) As Boolean
     Dim rest As String, i As Long, c As String
-    txt = Trim(Replace(Replace(txt, Chr(11), " "), vbTab, " "))
+    txt = Trim(Replace(Replace(Replace(txt, Chr(11), " "), Chr(12), ""), vbTab, " "))
     If Len(txt) > 200 Then Exit Function
     If Left(txt, Len(capWord) + 1) <> capWord & " " Then Exit Function
     rest = Mid(txt, Len(capWord) + 2)
@@ -1513,7 +1526,7 @@ End Function
 
 ' Caption text with line breaks turned into spaces and trimmed.
 Private Function CleanCaptionText(ByVal t As String) As String
-    t = Replace(Replace(Replace(t, vbCr, ""), Chr(11), " "), vbTab, " ")
+    t = Replace(Replace(Replace(Replace(Replace(t, vbCr, ""), Chr(11), " "), Chr(12), ""), Chr(14), ""), vbTab, " ")
     Do While InStr(t, "  ") > 0
         t = Replace(t, "  ", " ")
     Loop
@@ -1543,6 +1556,10 @@ Private Sub NormalizeCaption(ByVal doc As Document, ByVal p As Paragraph, ByVal 
     want = capWord & " " & num
     If Len(rest) > 0 Then want = want & Chr(11) & rest
     Set rng = doc.Range(p.Range.Start, p.Range.End - 1)
+    ' keep a page or column break at the start of the caption
+    Do While Len(rng.Text) > 0 And (Left(rng.Text, 1) = Chr(12) Or Left(rng.Text, 1) = Chr(14))
+        rng.MoveStart wdCharacter, 1
+    Loop
     ' rewrite only if the caption really differs (spaces around the line break do not count),
     ' so correct captions in IPBES documents get no tracked change
     ' minimal tracked edit (only the part that differs), never a whole-caption replacement
@@ -1565,10 +1582,14 @@ End Function
 ' Footer-pool. The first-page header and footer (masthead, job number) are kept.
 ' Returns the number of headers and footers rebuilt (0 if no symbol was found).
 Private Function FixHeadersFooters(ByVal doc As Document) As Long
-    Dim symbol As String, sec As Section, hf As HeaderFooter, i As Long, n As Long, kinds As Variant, k As Variant
+    Dim symbol As String, sec As Section, hf As HeaderFooter, i As Long, n As Long, kinds As Variant, k As Variant, oldTrackHF As Boolean
     symbol = FindSymbol(doc)
     If Len(symbol) = 0 Then Exit Function
     On Error Resume Next
+    ' Word cannot delete the tables of old UN headers while tracking changes, so headers
+    ' and footers are rebuilt with tracking off (body changes stay tracked).
+    oldTrackHF = doc.TrackRevisions
+    doc.TrackRevisions = False
     doc.PageSetup.OddAndEvenPagesHeaderFooter = True
     kinds = Array(wdHeaderFooterPrimary, wdHeaderFooterEvenPages)
     For Each sec In doc.Sections
@@ -1585,6 +1606,7 @@ Private Function FixHeadersFooters(ByVal doc As Document) As Long
             End If
         Next k
     Next sec
+    doc.TrackRevisions = oldTrackHF
     On Error GoTo 0
     FixHeadersFooters = n
 End Function
