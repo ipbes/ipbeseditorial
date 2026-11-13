@@ -856,12 +856,14 @@ Public Sub IPBES_FixFormatting()
     CacheBuiltinNames doc
     alreadyIPBES = UsesStyle(doc, "Normal_number") Or UsesStyle(doc, "CH1")
 
-    ' 1. Style definitions from the add-in
+    ' 1. Style definitions from the add-in, then the key IPBES formats set explicitly
+    '    (so the result does not depend on how Word merged the copied styles)
     On Error Resume Next
     doc.CopyStylesFromTemplate ThisDocument.FullName
     stylesCopied = (Err.Number = 0)
     Err.Clear
     On Error GoTo 0
+    EnsureIPBESStyles doc
 
     ' 2. Page set-up
     nPage = SetIPBESPage(doc)
@@ -971,6 +973,111 @@ Public Sub IPBES_FixFormatting()
     If alreadyIPBES Then msg = msg & vbCr & "The document already used IPBES styles, so Normal paragraphs were left as they were." & vbCr
     msg = msg & vbCr & "Next: run Check document for heading numbering, lone subheadings and the masthead."
     MsgBox msg, vbInformation, "IPBES"
+End Sub
+
+' Sets the key IPBES paragraph styles explicitly (values from the IPBES report template,
+' see ipbes-editorial/references/report-structure.md). Creates a style if it is missing.
+Private Sub EnsureIPBESStyles(ByVal doc As Document)
+    On Error Resume Next
+    DefineStyle doc, "Normal", 10, False, 0, 0, 0, 0, False
+    DefineStyle doc, "Normal-pool", 10, False, 0, 0, 0, 0, False
+    DefineStyle doc, "BB_Title", 14, True, 2.2, 0, 16, 12, True
+    DefineStyle doc, "CH1", 14, True, 2.2, -2.2, 12, 6, True
+    DefineStyle doc, "CH2", 12, True, 2.2, -2.2, 12, 6, True
+    DefineStyle doc, "CH3", 10, True, 2.2, -2.2, 12, 6, True
+    DefineStyle doc, "CH4", 10, True, 2.2, -2.2, 6, 6, True
+    DefineStyle doc, "Normal_number", 10, False, 2.2, 0, 0, 6, False
+    DefineStyle doc, "Normal_No_number", 10, False, 2.2, 0, 0, 6, False
+    DefineStyle doc, "Title_table", 10, True, 2.2, 0, 0, 3, True
+    DefineStyle doc, "Title_figure", 10, True, 2.2, 0, 0, 3, True
+    DefineStyle doc, "Header-pool", 9, True, 0, 0, 0, 0, False
+    DefineStyle doc, "Footer-pool", 9, True, 0, 0, 0, 6, False
+    ' heading layout "<tab>I.<tab>Title": number at 1.1 cm, title at the 2.2 cm hanging indent
+    Dim h As Variant
+    For Each h In Array("CH1", "CH2", "CH3", "CH4")
+        With doc.Styles(h).ParagraphFormat.TabStops
+            .ClearAll
+            .Add CentimetersToPoints(1.1)
+        End With
+    Next h
+    ' paragraph numbers: wrapped lines at 2.2 cm, text after the number at 3.3 cm
+    With doc.Styles("Normal_number").ParagraphFormat
+        .TabStops.ClearAll
+        .TabStops.Add CentimetersToPoints(3.3)
+    End With
+    doc.Styles("Header-pool").ParagraphFormat.Borders(wdBorderBottom).LineStyle = wdLineStyleSingle
+    doc.Styles("Header-pool").ParagraphFormat.Borders(wdBorderBottom).LineWidth = wdLineWidth050pt
+    EnsureParagraphNumbering doc
+    On Error GoTo 0
+End Sub
+
+Private Sub DefineStyle(ByVal doc As Document, ByVal sName As String, ByVal size As Single, ByVal isBold As Boolean, _
+                        ByVal leftCm As Single, ByVal firstCm As Single, ByVal beforePt As Single, _
+                        ByVal afterPt As Single, ByVal keepNext As Boolean)
+    Dim st As Style
+    On Error Resume Next
+    Set st = doc.Styles(sName)
+    If st Is Nothing Then Set st = doc.Styles.Add(sName, wdStyleTypeParagraph)
+    If st Is Nothing Then Exit Sub
+    With st.Font
+        .Name = "Times New Roman"
+        .Size = size
+        .Bold = isBold
+        .Italic = False
+        .Color = wdColorAutomatic
+    End With
+    With st.ParagraphFormat
+        .Alignment = wdAlignParagraphLeft
+        .LeftIndent = CentimetersToPoints(leftCm)
+        .FirstLineIndent = CentimetersToPoints(firstCm)
+        .SpaceBefore = beforePt
+        .SpaceAfter = afterPt
+        .LineSpacingRule = wdLineSpaceSingle
+        .KeepWithNext = keepNext
+    End With
+    On Error GoTo 0
+End Sub
+
+' Paragraph numbering of Normal_number: "1." at 2.2 cm with the text at 3.3 cm and wrapped
+' lines at 2.2 cm; "(a)" at 3.3 cm; "(i)" at 4.4 cm (IPBES report layout).
+Private Sub EnsureParagraphNumbering(ByVal doc As Document)
+    Dim st As Style, lt As ListTemplate
+    On Error Resume Next
+    Set st = doc.Styles("Normal_number")
+    If st Is Nothing Then Exit Sub
+    Set lt = st.ListTemplate
+    If lt Is Nothing Then
+        Set lt = doc.ListTemplates.Add(OutlineNumbered:=True)
+        st.LinkToListTemplate lt, 1
+    End If
+    With lt.ListLevels(1)
+        .NumberStyle = wdListNumberStyleArabic
+        .NumberFormat = "%1."
+        .Alignment = wdListLevelAlignLeft
+        .NumberPosition = CentimetersToPoints(2.2)
+        .TextPosition = CentimetersToPoints(2.2)
+        .TabPosition = CentimetersToPoints(3.3)
+        .TrailingCharacter = wdTrailingTab
+    End With
+    With lt.ListLevels(2)
+        .NumberStyle = wdListNumberStyleLowercaseLetter
+        .NumberFormat = "(%2)"
+        .Alignment = wdListLevelAlignLeft
+        .NumberPosition = CentimetersToPoints(3.3)
+        .TextPosition = CentimetersToPoints(2.2)
+        .TabPosition = CentimetersToPoints(4.4)
+        .TrailingCharacter = wdTrailingTab
+    End With
+    With lt.ListLevels(3)
+        .NumberStyle = wdListNumberStyleLowercaseRoman
+        .NumberFormat = "(%3)"
+        .Alignment = wdListLevelAlignLeft
+        .NumberPosition = CentimetersToPoints(4.4)
+        .TextPosition = CentimetersToPoints(5.5)
+        .TabPosition = CentimetersToPoints(5.5)
+        .TrailingCharacter = wdTrailingTab
+    End With
+    On Error GoTo 0
 End Sub
 
 ' True if the add-in itself holds the IPBES styles (added by tools/prepare_addin.py).
