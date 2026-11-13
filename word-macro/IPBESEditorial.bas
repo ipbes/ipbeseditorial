@@ -218,6 +218,8 @@ Private Sub BuildRules()
         "IPBES has 'members' (IPBES members, members of the Platform); 'Member States' means States Members of the United Nations."
     AddRule "Terms", "indigenous peoples", False, True, False, _
         "Capitalize: 'Indigenous Peoples' (IPBES practice since IPBES-10).", "Indigenous Peoples", True
+    AddRule "Terms", "spatial planning assessment", False, False, False, _
+        "Short name: 'spatial planning and connectivity assessment'.", "spatial planning and connectivity assessment", True
     AddRule "Terms", "Indigenous peoples", False, True, False, _
         "Capitalize: 'Indigenous Peoples'.", "Indigenous Peoples", True
     AddRule "Terms", "indigenous and local knowledge", False, True, False, _

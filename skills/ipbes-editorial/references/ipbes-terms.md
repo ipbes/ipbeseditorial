@@ -99,7 +99,7 @@ These names and terms are taken from the Plenary reports IPBES-1 to IPBES-12 (se
 Notes:
 
 - **Session column.** The "Approved" column gives the session at which the Plenary approved the summary for policymakers. Check it against the decision before citing it.
-- **Spatial planning.** The abbreviations PDF gives "Spatial planning assessment". The reports since IPBES-11 use "spatial planning and connectivity assessment" (see `evidence.md` section 5).
+- **Spatial planning.** The short name is "spatial planning and connectivity assessment", as the secretariat confirmed. "Spatial planning assessment" in the abbreviations PDF is outdated; correct it wherever it appears.
 - **Published report titles.** Titles of published assessment reports, as printed on the cover (for example *Global Assessment Report on Biodiversity and Ecosystem Services*), are capitalized and italicized only when the published book is cited as a publication, for example in a reference list.
 
 ## 5. Document symbols

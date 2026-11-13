@@ -53,7 +53,7 @@ You ask for things in the same way as in section 1.
 
 ---
 
-## 3. For the programme assistant
+## 3. For the secretariat editor
 
 Run these commands in a terminal from the repository folder. The scripts need Python 3; the Word tools also need python-docx (`pip install --user python-docx`).
 

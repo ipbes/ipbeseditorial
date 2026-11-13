@@ -89,7 +89,7 @@ IPBES practice:
   - Give the full title at first mention, followed by the short name in parentheses, in lower case: "…methodological assessment of the impact and dependence of business on biodiversity and nature’s contributions to people (business and biodiversity assessment)".
   - Use the short name after that.
   - The three-letter codes (BBA, TCA, NXS…) are **internal only**. They never appear in Plenary reports. Do not use them in documents. See `ipbes-terms.md` for all full titles and short names.
-  - The spatial planning assessment is "spatial planning and connectivity assessment" in the reports, although the abbreviations list says "spatial planning assessment" (see `evidence.md` section 5).
+  - The short name of the spatial planning assessment is "spatial planning and connectivity assessment" (confirmed by the secretariat). Correct "spatial planning assessment" wherever it appears.
 - **United Nations entities.** Spell out at first mention: Food and Agriculture Organization of the United Nations (FAO); United Nations Development Programme (UNDP); United Nations Environment Programme (UNEP); United Nations Educational, Scientific and Cultural Organization (UNESCO).
 - **Other bodies.** Convention on Biological Diversity, Intergovernmental Panel on Climate Change (IPCC) and Kunming-Montreal Global Biodiversity Framework are written in full. Abbreviate them only if they recur and you have defined them.
 

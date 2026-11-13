@@ -106,6 +106,6 @@ IPBES-1 (2013) used a different template (`__Single Txt`, `_ H _Ch`, `_ H_1`). I
 
 ## 5. Discrepancies with other IPBES sources
 
-- **Spatial planning assessment.** `authorities/IPBES_Assessment_Abbreviations.pdf` gives the short name "Spatial planning assessment". The reports use "spatial planning and connectivity assessment" (IPBES-11: 9; IPBES-12: 16; "spatial planning assessment" appears 3 times, in IPBES-11 only). **The reports' form is used.** Ask the secretariat to confirm.
+- **Spatial planning assessment.** `authorities/IPBES_Assessment_Abbreviations.pdf` gives the short name "Spatial planning assessment". The reports use "spatial planning and connectivity assessment" (IPBES-11: 9; IPBES-12: 16). "Spatial planning assessment" appears 3 times, all in IPBES-11. **Confirmed by the secretariat (13 November 2026): "spatial planning and connectivity assessment" is correct**; the PDF is outdated on this point.
 - **Transformative change assessment.** The full title in the PDF is cut short. The reports give: "thematic assessment of the underlying causes of biodiversity loss and the determinants of transformative change and options for achieving the 2050 Vision for Biodiversity".
 - **Business and biodiversity assessment.** The PDF capitalizes the full title ("Methodological Assessment of the Impact…"). The reports use lower case in running text.
