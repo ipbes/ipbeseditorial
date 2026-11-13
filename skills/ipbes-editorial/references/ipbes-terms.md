@@ -1,6 +1,6 @@
 # IPBES names and terms
 
-These names and terms are taken from the Plenary reports IPBES-1 to IPBES-12 (see `evidence.md`) and from `authorities/IPBES_Assessment_Abbreviations.pdf`. Where the two disagree, the reports win and the difference is noted.
+These names and terms are taken from the Plenary reports IPBES-1 to IPBES-12 (see `evidence.md`) and from the IPBES assessment abbreviations list (IPBES_Assessment_Abbreviations.pdf). Where the two disagree, the reports win and the difference is noted.
 
 ## 1. The Platform
 

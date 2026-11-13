@@ -5,7 +5,7 @@ These rules cover gender and disability in English IPBES documents. They add det
 Sources:
 
 - **Gender:** UN, *Guidelines for gender-inclusive language in English*, https://www.un.org/en/gender-inclusive-language/guidelines.shtml, and its Toolbox page.
-- **Disability:** UN Department of Global Communications, *Disability-Inclusive Communications Guidelines* (March 2022), a copy of which is in the repository as `authorities/disability_inclusive_language.pdf`. Its terminology table (table 1) is taken from the UN Office at Geneva, *Disability-Inclusive Language Guidelines* (2021), https://www.ungeneva.org/sites/default/files/2021-01/Disability-Inclusive-Language-Guidelines.pdf. For the latest terms, check UNTERM (https://unterm.un.org).
+- **Disability:** UN Department of Global Communications, *Disability-Inclusive Communications Guidelines* (March 2022). Its terminology table (table 1) is taken from the UN Office at Geneva, *Disability-Inclusive Language Guidelines* (2021), https://www.ungeneva.org/sites/default/files/2021-01/Disability-Inclusive-Language-Guidelines.pdf. For the latest terms, check UNTERM (https://unterm.un.org).
 
 **Do not change agreed text.** Do not reword gender or disability language in text agreed by the Plenary (decisions, approved summaries for policymakers) or in direct quotations. Flag it instead.
 

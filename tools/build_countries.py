@@ -1,6 +1,6 @@
 """Build references/countries.csv from the IPBES IBOK geography file.
 
-Usage (Programme Assistant):
+Usage (secretariat editor):
   1. Download https://ibok.ipbes.net/rest/v1/geo/data?format=application/rdf%2Bxml
      and save it as ipbes-geo.rdf
   2. python build_countries.py ipbes-geo.rdf ../skills/ipbes-editorial/references/countries.csv

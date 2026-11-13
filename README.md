@@ -1,15 +1,183 @@
 # ipbeseditorial
-IPBES brand — colours, logo rules, chart and map standards, house writing style, logo production, the full video pipeline, mockups, and how to name and organise files.
+
+Editorial tools for English IPBES documents: the IPBES house style for AI assistants (Copilot and Claude), Word macros that check documents against it, and a Markdown-to-Word converter that produces documents in the IPBES style.
+
+**Editorial principle:** the UN Editorial Manual is the baseline. IPBES departs from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [evidence.md](skills/ipbes-editorial/references/evidence.md).
 
 ## Contents
 
-| Folder | Contents | Status |
-|---|---|---|
-| [skills/ipbes-editorial/](skills/ipbes-editorial/) | Editorial assistant for English IPBES documents, for Copilot and Claude: house style, terms, masthead and Word template, Markdown-to-Word converter. Start with its [README](skills/ipbes-editorial/README.md). | Ready for testing |
-| [word-macro/](word-macro/) | Word VBA macros that check documents against the house style and make safe fixes with Track Changes. See its [README](word-macro/README.md). | Needs a first test in Word |
-| [assets/](assets/) | Logos, motifs, colour palette and typography from the 2021 IPBES Visual Guidelines. See its [README](assets/README.md). | Ready |
-| [authorities/](authorities/) | Source documents: 2021 IPBES Visual Guidelines, IPBES assessment abbreviations, UN Disability-Inclusive Communications Guidelines | Reference |
-| [tools/](tools/) | Maintenance scripts: rebuild the country list, rebuild the Word template, re-scan Plenary reports for evidence, extract PDF text | Ready |
-| skills/documents, images, videos, website | Placeholders for later skills | Not started |
+| Path | Contents |
+|---|---|
+| [skills/ipbes-editorial/SKILL.md](skills/ipbes-editorial/SKILL.md) | Instructions Claude reads first |
+| [skills/ipbes-editorial/copilot/ipbes-editorial-instructions.txt](skills/ipbes-editorial/copilot/ipbes-editorial-instructions.txt) | The same rules, condensed for Copilot |
+| `skills/ipbes-editorial/references/` | The full rules: [house-style.md](skills/ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](skills/ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](skills/ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](skills/ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](skills/ipbes-editorial/references/evidence.md) |
+| `skills/ipbes-editorial/scripts/md_to_ipbes_docx.py` | Markdown-to-Word converter |
+| `skills/ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
+| `word-macro/` | Word macros (`IPBESEditorial.bas`) and a test document (`test/ipbes-macro-test.docx`) |
+| `tools/` | Maintenance scripts (see section 4) |
+| `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
 
-**Editorial principle:** the UN Editorial Manual is the baseline. IPBES deviates from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [skills/ipbes-editorial/references/evidence.md](skills/ipbes-editorial/references/evidence.md).
+---
+
+## 1. Using the assistant with Copilot
+
+The assistant can **edit** a document or passage and list what it changed, **standardize** the language of a document (names, terms, spelling, numbers, punctuation), and **convert** a Markdown draft into a Word document in the IPBES style. Copilot is the tool the organization approves; follow the organization's rules on which tool may be used for which documents.
+
+### Option A: a Copilot agent (recommended, set up once)
+
+1. Open **Microsoft 365 Copilot Chat** and choose **Create agent** (it may be called **New agent**).
+2. On the **Configure** tab, fill in the fields:
+   - **Name:** IPBES editorial assistant
+   - **Description:** Edits and standardizes English IPBES documents in the IPBES and UN house style.
+   - **Instructions:** paste the whole text of `skills/ipbes-editorial/copilot/ipbes-editorial-instructions.txt`.
+3. Under **Knowledge**, upload these files from `skills/ipbes-editorial/references/`:
+   - `house-style.md`
+   - `ipbes-terms.md`
+   - `report-structure.md`
+   - `inclusive-language.md`
+   - `countries.csv`
+
+   If Copilot does not accept `.md` files, use Word copies (see section 4).
+4. Select **Create**. Share the agent with colleagues if that is allowed.
+
+### Option B: no agent
+
+Start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
+
+### What to ask
+
+- "Edit this paragraph to IPBES style and list what you changed."
+- "Standardize the language in the attached document. Don't rewrite, just make it consistent."
+- "Check the masthead of the attached document."
+- "Turn this Markdown draft into an IPBES-style Word document."
+
+**Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or decisions. Report it if it ever does.
+
+## 2. Using the assistant with Claude
+
+- **Claude (web or desktop app):** package the skill as `ipbes-editorial.zip` (see section 4). Upload it under **Settings → Capabilities → Skills**. Claude then uses the skill whenever you ask it to edit an IPBES document.
+- **Claude Code:** copy the `skills/ipbes-editorial` folder into `~/.claude/skills/`.
+
+You ask for things the same way as in section 1.
+
+---
+
+## 3. Word macros
+
+The macros check a document against the house style and mark possible issues as Word comments. They work in Word itself, without AI and without an internet connection.
+
+| Macro | What it does | Changes the text? |
+|---|---|---|
+| **IPBES_CheckDocument** | Adds a comment starting "[IPBES]" at each possible issue and opens a summary report. Checks the Platform's name, internal codes (BBA, NXS…), abbreviations, numbers and dates, punctuation, spelling, terms, country names, inclusive language, the masthead (logos, symbol, date, spacing) and heading numbering. | No |
+| **IPBES_SafeFixes** | Makes safe corrections **with Track Changes on**: the shortened Platform name, "e.g." → "e.g.,", -ise → -ize, em dashes and spaced hyphens → en dashes, double spaces, straight → curly quotes, country names such as Türkiye and Czechia, "Indigenous Peoples", "spatial planning and connectivity assessment", and a few spellings. | Yes, tracked |
+| **IPBES_CheckVoice** | Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for review. IPBES is policy-relevant, not policy-prescriptive. | No |
+| **IPBES_RemoveIPBESComments** | Deletes only the comments the macros added. Other people's comments are kept. | No |
+
+- **Agreed text** (decisions, approved summaries for policymakers, quotations) must not be changed. Reject any tracked change there, and treat comments there as queries.
+- The comments are suggestions, not errors. For example, "should" in reported speech, or "Secretariat" in a budget table, is correct.
+- To keep the document readable, the macros mark at most 25 places per rule. The report shows the full count.
+
+### Installing
+
+**For one computer:**
+
+1. In Word, press **Alt+F11** (on a Mac: **Tools → Macro → Visual Basic Editor**).
+2. In the left pane, select **Normal**.
+3. Choose **File → Import File…** and select `word-macro/IPBESEditorial.bas`.
+4. Choose **Debug → Compile Normal**. If nothing happens, the macros compiled correctly.
+
+**To share with the team as an add-in (recommended):**
+
+1. Do the steps above in a new blank document, but select that document's project instead of Normal.
+2. Save the document as a **Word Macro-Enabled Template (*.dotm)** named `IPBES Editorial.dotm`.
+3. Each colleague copies the file into their Word **Startup** folder and restarts Word:
+   - **Windows:** `%APPDATA%\Microsoft\Word\STARTUP` (paste this into the File Explorer address bar).
+   - **Mac:** `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word`.
+
+**Buttons:**
+
+1. Go to **File → Options → Quick Access Toolbar**.
+2. Under "Choose commands from", select **Macros**.
+3. Add **IPBES_CheckDocument**, **IPBES_SafeFixes** and **IPBES_RemoveIPBESComments**, then use **Modify…** to give them icons and short names.
+
+**Macro security:** if the macros are blocked, check **File → Options → Trust Center → Trusted Locations**; the Startup folder is normally trusted. If the organization blocks macros, ask IT to sign the `.dotm` or to trust its location. Do not lower macro security for all documents.
+
+### Using the macros
+
+1. Save a copy of the document.
+2. Run **IPBES_CheckDocument**, either with the toolbar button or through **View → Macros**.
+3. Read the report that opens, then step through the comments with **Review → Next comment**.
+4. Optional: run **IPBES_SafeFixes**, then review the tracked changes and accept or reject each one.
+5. When you have finished, run **IPBES_RemoveIPBESComments**.
+
+### First-time test (before sharing)
+
+The macros were written without access to Word, so test them on a copy of a recent Plenary report and on `word-macro/test/ipbes-macro-test.docx`:
+
+- [ ] The module compiles (**Debug → Compile**).
+- [ ] On the IPBES-12 report (IPBES/12/11), there are few or no masthead comments.
+- [ ] Only straight quotes are marked, not curly ones.
+- [ ] **IPBES_SafeFixes** on the test document produces tracked changes only.
+- [ ] **IPBES_RemoveIPBESComments** leaves other people's comments in place.
+
+### Maintaining the rules
+
+The rules are in the `BuildRules` procedure, one `AddRule` line each. A line gives the category, the text to find, wildcards, match case, whole word, the message, and optionally the replacement and whether it is a safe fix. Use `ChrW()` for non-ASCII characters, because the VBA editor does not import them reliably.
+
+---
+
+## 4. For the secretariat editor
+
+Run these commands from the repository folder. The scripts need Python 3; the Word tools also need python-docx (`pip install --user python-docx`).
+
+| Task | Command |
+|---|---|
+| Package the skill for Claude | `cd skills && zip -r ipbes-editorial.zip ipbes-editorial` |
+| Convert a Markdown draft to Word | `python3 skills/ipbes-editorial/scripts/md_to_ipbes_docx.py draft.md draft.docx --numbered --symbol IPBES/13/5` (leave out `--numbered` for documents without numbered paragraphs) |
+| Update the country list | Download https://ibok.ipbes.net/rest/v1/geo/data?format=application/rdf%2Bxml as `ipbes-geo.rdf`, then run `python3 tools/build_countries.py ipbes-geo.rdf skills/ipbes-editorial/references/countries.csv` |
+| Rebuild the Word template from a new Plenary report | `python3 tools/make_template.py report.docx skills/ipbes-editorial/assets/ipbes-document-template.docx` |
+| Add a new Plenary report to the evidence | `python3 tools/docx_dump.py report.docx temp/dump/2027-13.txt`, then `python3 tools/evidence_scan.py temp/dump > temp/evidence_counts.md`. Compare the result with `evidence.md` and update the rules if practice has changed. |
+| Extract text from a PDF source | `python3 tools/pdf_text.py source.pdf output.txt` (or `pdftotext -layout source.pdf output.txt`) |
+| Make Word copies of the reference files | Open each `.md` file in Word (File → Open, "All files") and save it as `.docx`, or run `pandoc house-style.md -o house-style.docx` |
+
+**After any change to the rules:**
+
+- update `copilot/ipbes-editorial-instructions.txt` (Copilot's limit is 8,000 characters, and the file is close to it);
+- re-upload the knowledge files to the Copilot agent;
+- re-package the Claude skill;
+- update the matching `AddRule` lines in `word-macro/IPBESEditorial.bas`.
+
+---
+
+## 5. Brand assets (`assets/`)
+
+These assets were extracted from the *IPBES Logo and Visual Identity Guidelines* (2021) for web and design work, which will move to a separate repository. Official documents use only the masthead logos in `skills/ipbes-editorial/assets/masthead/` and Times New Roman.
+
+- **`logo/`:** the IPBES logo in SVG (preferred), PDF and PNG, with and without the strapline "Science and Policy for People and Nature":
+  - **original** and **medium teal**, for light backgrounds;
+  - **mono**, for single colour on light backgrounds;
+  - **reversed**, for dark full-colour backgrounds;
+  - **whiteout**, for dark single-colour backgrounds;
+  - **clear-space**, showing the minimum clear space (the height of the ascender of the "b").
+
+  Never distort, redraw or generate the logo.
+- **`motifs/`:** the fingerprint, ecosystems, species and genetics motifs.
+- **`reference-pages/`:** images of pages 01–10 of the guidelines.
+- **Typography:** Helvetica Neue. If it is not available, use another version of Helvetica, or Arial.
+- **Primary colours:** Teal #037473, Orange (Pumpkin) #D05606, Grey #676C5F, Light Green #BFD787. The secondary palette is on `reference-pages/05-colour-palette.png`.
+- **Contrast for text on white** (WCAG, at least 4.5:1):
+  - Fine for any text: Teal, Grey, True Red, Plum, Purple, Faded Purple, Navy Blue, Denim Blue, Lagoon Blue, Dark Grey, Forest Green.
+  - Large text only: Orange, Medium Teal, Spring Green, Mole Grey, Foam Green.
+  - Never for text: Light Green, Yellow, the secondary Orange, Ice Grey, Medium Green, Light Grey.
+
+---
+
+**Sources:**
+
+- UN Editorial Manual (https://www.un.org/dgacm/en/content/editorial-manual) and UN spelling list (October 2026)
+- UN *Guidelines for gender-inclusive language in English*
+- UN *Disability-Inclusive Communications Guidelines* (2022)
+- IPBES geography list
+- IPBES assessment abbreviations list
+- IPBES Plenary reports IPBES/1/12 to IPBES/12/11
+- IPBES *Logo and Visual Identity Guidelines* (2021)
