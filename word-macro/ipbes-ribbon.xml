@@ -19,6 +19,10 @@
                   supertip="Marks prescriptive wording (must, should, need to...) for review. IPBES is policy-relevant, not policy-prescriptive." />
         </group>
         <group id="IPBESFixGroup" label="Fix (tracked)">
+          <button id="IPBESFixFormatting" label="Fix formatting" size="large"
+                  imageMso="FormatPainter" onAction="IPBESRibbon_FixFormatting"
+                  screentip="Fix formatting"
+                  supertip="Applies the IPBES layout: IPBES Word styles, A4 page set-up, headings (Heading 1-4 to CH1-CH4), body paragraphs (numbered or not), table captions and table layout. Style and text changes are tracked." />
           <button id="IPBESSafeFixes" label="Safe fixes" size="large"
                   imageMso="ReviewTrackChanges" onAction="IPBESRibbon_SafeFixes"
                   screentip="Safe fixes"
