@@ -319,6 +319,10 @@ Public Sub IPBES_CheckDocument()
     BuildRules
 
     For i = 1 To RuleCount
+        If i Mod 10 = 1 Then
+            Application.StatusBar = "IPBES check: rule " & i & " of " & RuleCount & " (" & Rules(i).Category & ")..."
+            DoEvents
+        End If
         sample = ""
         n = MarkRule(doc, Rules(i), sample)
         If n > 0 Then
@@ -328,8 +332,13 @@ Public Sub IPBES_CheckDocument()
         End If
     Next i
 
+    Application.StatusBar = "IPBES check: masthead..."
     total = total + CheckMasthead(doc)
+    Application.StatusBar = "IPBES check: headings..."
     total = total + CheckHeadings(doc)
+    Application.StatusBar = "IPBES check: table and figure captions..."
+    total = total + CheckCaptions(doc)
+    Application.StatusBar = False
 
     Application.ScreenUpdating = True
     WriteReport doc, total, "Editorial check"
@@ -342,6 +351,8 @@ Public Sub IPBES_CheckVoice()
                   "it is imperative", "urgently", "groundbreaking", "unprecedented", "call on", "calls on")
     Application.ScreenUpdating = False
     For Each w In words
+        Application.StatusBar = "IPBES voice check: '" & w & "'..."
+        DoEvents
         r.Category = "Voice"
         r.FindText = CStr(w)
         r.UseWildcards = False
@@ -356,6 +367,7 @@ Public Sub IPBES_CheckVoice()
             ReportLines.Add "Voice" & vbTab & n & vbTab & "" & vbTab & "'" & w & "'" & vbTab & ""
         End If
     Next w
+    Application.StatusBar = False
     Application.ScreenUpdating = True
     WriteReport ActiveDocument, total, "Voice check"
 End Sub
@@ -378,6 +390,10 @@ Public Sub IPBES_SafeFixes()
     Set ReportLines = New Collection
 
     For i = 1 To RuleCount
+        If i Mod 10 = 1 Then
+            Application.StatusBar = "IPBES safe fixes: rule " & i & " of " & RuleCount & " (" & Rules(i).Category & ")..."
+            DoEvents
+        End If
         If Rules(i).AutoFix Then
             If Rules(i).FindText = "  " Then
                 n = 0
@@ -397,7 +413,10 @@ Public Sub IPBES_SafeFixes()
         End If
     Next i
 
+    Application.StatusBar = "IPBES safe fixes: quotation marks and apostrophes..."
+    DoEvents
     n = FixStraightQuotes(doc)
+    Application.StatusBar = False
     If n > 0 Then
         total = total + n
         ReportLines.Add "Punctuation" & vbTab & n & vbTab & "fixed" & vbTab & "straight quotes -> curly" & vbTab & ""
@@ -427,7 +446,7 @@ Public Sub IPBES_ApplyChangeList()
     Dim items As Collection, it As Variant
     Dim orig As String, rev As String, ruleTxt As String, itemNo As String
     Dim applied As Long, notFound As Long, ambiguous As Long, skipped As Long, res As Long
-    Dim oldTrack As Boolean, candidates As Collection, names As String, choice As String, i As Long
+    Dim oldTrack As Boolean, candidates As Collection, names As String, choice As String, i As Long, iItem As Long
 
     Set target = ActiveDocument
     If HasChangeList(target) Then
@@ -495,6 +514,9 @@ Public Sub IPBES_ApplyChangeList()
     Application.ScreenUpdating = False
 
     For Each it In items
+        iItem = iItem + 1
+        Application.StatusBar = "IPBES change list: item " & iItem & " of " & items.Count & "..."
+        If iItem Mod 5 = 0 Then DoEvents
         itemNo = it(0): orig = it(1): rev = it(2): ruleTxt = it(3)
         If Len(orig) = 0 Or orig = rev Then
             skipped = skipped + 1
@@ -520,6 +542,7 @@ Public Sub IPBES_ApplyChangeList()
             End Select
         End If
     Next it
+    Application.StatusBar = False
 
     SetTracking target, oldTrack
     Application.ScreenUpdating = True
@@ -914,6 +937,7 @@ Public Sub IPBES_FixFormatting()
                         p.Style = doc.Styles(target)
                         ResetDirect p
                         NormalizeCaption doc, p, IIf(target = "Title_table", "Table", "Figure")
+                        If p.Range.Font.Bold <> True Then p.Range.Font.Bold = True
                         nCaptions = nCaptions + 1
                     Case "Normal_number", "Normal_No_number"
                         If Len(txt) = 0 Then
@@ -1469,8 +1493,9 @@ Private Function FixTableCaption(ByVal doc As Document, ByVal t As Table) As Boo
         If StyleName(pp) <> "Title_table" Then
             pp.Style = doc.Styles("Title_table")
             ResetDirect pp
-            pp.Range.Font.Bold = False
         End If
+        CleanUniformFormatting pp
+        If pp.Range.Font.Bold <> False Then pp.Range.Font.Bold = False      ' headnotes are not bold
         Set pp = pp.Previous
         If pp Is Nothing Then Exit Function
         If pp.Range.Information(wdWithInTable) Then Exit Function
@@ -1481,6 +1506,8 @@ Private Function FixTableCaption(ByVal doc As Document, ByVal t As Table) As Boo
         ResetDirect pp
     End If
     NormalizeCaption doc, pp, "Table"
+    CleanUniformFormatting pp
+    If pp.Range.Font.Bold <> True Then pp.Range.Font.Bold = True            ' caption titles are bold
     FixTableCaption = True
 End Function
 
@@ -1516,10 +1543,22 @@ Private Sub NormalizeCaption(ByVal doc As Document, ByVal p As Paragraph, ByVal 
     want = capWord & " " & num
     If Len(rest) > 0 Then want = want & Chr(11) & rest
     Set rng = doc.Range(p.Range.Start, p.Range.End - 1)
-    If rng.Text <> want Then rng.Text = want
-    p.LeftIndent = CentimetersToPoints(2.2)
-    p.FirstLineIndent = 0
+    ' rewrite only if the caption really differs (spaces around the line break do not count),
+    ' so correct captions in IPBES documents get no tracked change
+    ' minimal tracked edit (only the part that differs), never a whole-caption replacement
+    If CaptionKey(rng.Text) <> CaptionKey(want) Then ApplyDiff doc, rng, want, ""
+    If Abs(p.LeftIndent - CentimetersToPoints(2.2)) > 1 Then p.LeftIndent = CentimetersToPoints(2.2)
+    If p.FirstLineIndent <> 0 Then p.FirstLineIndent = 0
 End Sub
+
+' Caption text without spaces, tabs and non-breaking spaces (line breaks kept), for comparison.
+Private Function CaptionKey(ByVal t As String) As String
+    t = Replace(t, vbCr, "")
+    t = Replace(t, " ", "")
+    t = Replace(t, vbTab, "")
+    t = Replace(t, ChrW(160), "")
+    CaptionKey = t
+End Function
 
 ' Rebuilds page headers and footers in the IPBES layout: the document symbol in
 ' Header-pool (left on even pages, right on odd pages) and the page number in
@@ -2036,6 +2075,135 @@ Private Function CheckHeadings(ByVal doc As Document) As Long
     If n > 0 Then ReportLines.Add "Headings" & vbTab & n & vbTab & "" & vbTab & "Numbering gaps, lone subheadings or final full stops" & vbTab & ""
     CheckHeadings = n
 End Function
+
+' ---------------------------------------------------------------------------
+' Caption checks: style, layout, punctuation, formatting, numbering, position
+' ---------------------------------------------------------------------------
+Private Function CheckCaptions(ByVal doc As Document) As Long
+    Dim p As Paragraph, nxt As Paragraph, txt As String, t2 As String, sName As String, n As Long
+    Dim capWord As String, expected As String, num As String, sep As String, rest As String
+    Dim v As Long, lastT As Long, lastF As Long, sinceAnnex As Boolean, nearTable As Boolean, k As Long
+    Dim sf As Font
+    For Each p In doc.Paragraphs
+        sName = StyleName(p)
+        txt = CleanCaptionText(p.Range.Text)
+        If sName = "ZZ_Anx_header" Or txt = "Annex" Or Left(txt, 6) = "Annex " Then sinceAnnex = True
+        capWord = ""
+        If IsCaption(txt, "Table") Then
+            capWord = "Table"
+        ElseIf IsCaption(txt, "Figure") Then
+            capWord = "Figure"
+        End If
+        If Len(capWord) > 0 Then
+            If Not p.Range.Information(wdWithInTable) Then
+                expected = IIf(capWord = "Table", "Title_table", "Title_figure")
+                num = "": sep = "": rest = ""
+                SplitCaption txt, capWord, num, sep, rest
+                ' style
+                If sName <> expected And Not (capWord = "Figure" And sName = "Title_table") Then
+                    n = n + Flag(doc, p.Range, "Caption: use the style " & expected & ".")
+                End If
+                ' layout and punctuation
+                If Len(sep) > 0 Then
+                    n = n + Flag(doc, p.Range, "Caption: no punctuation after the number ('" & capWord & " " & num & "', then a line break, then the title).")
+                ElseIf Len(rest) > 0 And InStr(p.Range.Text, Chr(11)) = 0 Then
+                    n = n + Flag(doc, p.Range, "Caption layout: '" & capWord & " " & num & "', then a line break (Shift+Enter), then the title.")
+                End If
+                If Right(rest, 1) = "." Then n = n + Flag(doc, p.Range, "Caption: no full stop at the end of the title.")
+                ' formatting
+                Set sf = Nothing
+                On Error Resume Next
+                Set sf = p.Style.Font
+                On Error GoTo 0
+                If p.Range.Font.Bold <> True Then
+                    n = n + Flag(doc, p.Range, "Caption: the number and title are bold (" & expected & ").")
+                ElseIf Not sf Is Nothing Then
+                    If (Len(p.Range.Font.Name) > 0 And p.Range.Font.Name <> sf.Name) Or _
+                       (p.Range.Font.Size <> wdUndefined And p.Range.Font.Size <> sf.Size) Or _
+                       (p.Range.Font.Color <> wdUndefined And p.Range.Font.Color <> sf.Color) Then
+                        n = n + Flag(doc, p.Range, "Caption: font, size or colour differs from the style " & expected & " (Fix formatting removes it).")
+                    End If
+                End If
+                ' numbering
+                v = 0
+                If num Like "#*" And IsNumeric(num) Then
+                    v = CLng(num)
+                ElseIf RomanValue(num) > 0 Then
+                    v = RomanValue(num)
+                    If capWord = "Table" Then n = n + Flag(doc, p.Range, "Tables are numbered with Arabic numerals (Table 1, Table 2 ...).")
+                End If
+                If v > 0 Then
+                    If capWord = "Table" Then
+                        If Not (v = lastT + 1 Or (v = 1 And sinceAnnex)) Then
+                            n = n + Flag(doc, p.Range, "Table numbering: " & capWord & " " & num & " follows table " & lastT & _
+                                IIf(v = 1, " (numbering restarts only in a new annex).", "."))
+                        End If
+                        lastT = v
+                    Else
+                        If Not (v = lastF + 1 Or (v = 1 And sinceAnnex)) Then
+                            n = n + Flag(doc, p.Range, "Figure numbering: " & capWord & " " & num & " follows figure " & lastF & ".")
+                        End If
+                        lastF = v
+                    End If
+                    If v = 1 Then sinceAnnex = False
+                End If
+                ' position (tables): directly above the table, with at most a headnote and empty lines between
+                If capWord = "Table" Then
+                    nearTable = False
+                    Set nxt = p.Next
+                    k = 0
+                    Do While Not nxt Is Nothing And k < 4
+                        If nxt.Range.Information(wdWithInTable) Then nearTable = True: Exit Do
+                        t2 = CleanCaptionText(nxt.Range.Text)
+                        If Len(t2) > 0 Then
+                            If Left(t2, 1) = "(" And Right(t2, 1) = ")" Then
+                                If StyleName(nxt) <> "Title_table" Then
+                                    n = n + Flag(doc, nxt.Range, "Headnote: use the style Title_table (not bold).")
+                                ElseIf nxt.Range.Font.Bold = True Then
+                                    n = n + Flag(doc, nxt.Range, "Headnote: not bold.")
+                                End If
+                            Else
+                                Exit Do
+                            End If
+                        End If
+                        Set nxt = nxt.Next
+                        k = k + 1
+                    Loop
+                    If Not nearTable Then n = n + Flag(doc, p.Range, "Caption: should be directly above its table (only a headnote such as '(United States dollars)' in between).")
+                End If
+            End If
+        End If
+    Next p
+    If n > 0 Then ReportLines.Add "Captions" & vbTab & n & vbTab & "" & vbTab & _
+        "Table and figure captions: style, layout, punctuation, formatting, numbering, position" & vbTab & ""
+    CheckCaptions = n
+End Function
+
+' Splits a caption into its number, the punctuation after it (if any) and the title.
+Private Sub SplitCaption(ByVal txt As String, ByVal capWord As String, ByRef num As String, _
+                         ByRef sep As String, ByRef rest As String)
+    Dim i As Long, c As String, r As String
+    r = Mid(txt, Len(capWord) + 2)
+    i = 1
+    Do While i <= Len(r)
+        c = Mid(r, i, 1)
+        If Not (c Like "[0-9IVXA.]") Then Exit Do
+        i = i + 1
+    Loop
+    num = Left(r, i - 1)
+    If Right(num, 1) = "." Then
+        num = Left(num, Len(num) - 1)
+        sep = "."
+    End If
+    rest = Trim(Mid(r, i))
+    If Len(rest) > 0 Then
+        c = Left(rest, 1)
+        If c = ":" Or c = "-" Or c = "." Or c = ChrW(8211) Or c = ChrW(8212) Then
+            sep = c
+            rest = Trim(Mid(rest, 2))
+        End If
+    End If
+End Sub
 
 Private Sub SplitHeading(ByVal raw As String, ByRef label As String, ByRef txt As String)
     Dim parts() As String, i As Long, bits As New Collection
