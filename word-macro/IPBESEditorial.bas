@@ -13,9 +13,15 @@ Attribute VB_Name = "IPBESEditorial"
 '   IPBES_CheckVoice         Marks prescriptive wording ("must", "should"...)
 '                            for review. Separate because reports legitimately
 '                            report speakers' views.
+'   IPBES_ApplyChangeList    Applies a change list from Copilot or Claude (a
+'                            table with columns "Original" and "Revised") to the
+'                            active document as tracked changes, keeping all
+'                            formatting. Paste the table into a new Word
+'                            document, keep it open, then run this macro from
+'                            the document to correct.
 '   IPBES_RemoveIPBESComments  Deletes only the comments added by these macros.
 '
-' Rules: skills/ipbes-editorial/references/house-style.md (UN Editorial Manual
+' Rules: ipbes-editorial/references/house-style.md (UN Editorial Manual
 ' plus IPBES practice from the Plenary reports IPBES-1 to IPBES-12).
 ' Agreed text (decisions, approved summaries for policymakers, quotations) must
 ' not be changed: reject tracked changes there and treat comments as queries.
@@ -402,6 +408,233 @@ Public Sub IPBES_RemoveIPBESComments()
     Next i
     MsgBox n & " IPBES comment(s) removed.", vbInformation, "IPBES"
 End Sub
+
+Public Sub IPBES_ApplyChangeList()
+    Dim target As Document, listDoc As Document, d As Document, tbl As Table
+    Dim colOrig As Long, colRev As Long, colRule As Long, colNo As Long, r As Long, c As Long
+    Dim orig As String, rev As String, ruleTxt As String, hdr As String, itemNo As String
+    Dim applied As Long, notFound As Long, ambiguous As Long, skipped As Long, res As Long
+    Dim oldTrack As Boolean, candidates As Collection, names As String, choice As String, i As Long
+
+    Set target = ActiveDocument
+    If FindChangeTable(target) > 0 Then
+        MsgBox "This document contains the change list." & vbCr & vbCr & _
+               "Switch to the document you want to correct, then run IPBES_ApplyChangeList again.", vbExclamation, "IPBES"
+        Exit Sub
+    End If
+
+    Set candidates = New Collection
+    For Each d In Documents
+        If Not d Is target Then
+            If FindChangeTable(d) > 0 Then candidates.Add d
+        End If
+    Next d
+    If candidates.Count = 0 Then
+        MsgBox "No change list found." & vbCr & vbCr & _
+               "1. Copy the change table from Copilot or Claude (columns Original and Revised)." & vbCr & _
+               "2. Paste it into a new Word document and keep that document open." & vbCr & _
+               "3. Return to the document to correct and run IPBES_ApplyChangeList.", vbExclamation, "IPBES"
+        Exit Sub
+    End If
+    If candidates.Count = 1 Then
+        Set listDoc = candidates(1)
+    Else
+        names = ""
+        For i = 1 To candidates.Count
+            names = names & i & ". " & candidates(i).Name & vbCr
+        Next i
+        choice = InputBox("Several open documents contain a change list:" & vbCr & names & vbCr & _
+                          "Type the number of the one to use:", "IPBES", "1")
+        If Not IsNumeric(choice) Then Exit Sub
+        i = CLng(choice)
+        If i < 1 Or i > candidates.Count Then Exit Sub
+        Set listDoc = candidates(i)
+    End If
+
+    Set tbl = listDoc.Tables(FindChangeTable(listDoc))
+    For c = 1 To tbl.Rows(1).Cells.Count
+        hdr = LCase(CellText(tbl.Cell(1, c)))
+        If InStr(hdr, "original") > 0 Then colOrig = c
+        If InStr(hdr, "revised") > 0 Or InStr(hdr, "corrected") > 0 Then colRev = c
+        If InStr(hdr, "rule") > 0 Or InStr(hdr, "reason") > 0 Then colRule = c
+        If hdr = "no." Or hdr = "no" Or hdr = "#" Then colNo = c
+    Next c
+
+    If MsgBox("Apply " & (tbl.Rows.Count - 1) & " change(s) from '" & listDoc.Name & "'" & vbCr & _
+              "to '" & target.Name & "' with Track Changes?" & vbCr & vbCr & _
+              "Each change is made only if its original text is found exactly once." & vbCr & _
+              "Review every tracked change afterwards.", vbYesNo + vbQuestion, "IPBES") <> vbYes Then Exit Sub
+
+    Set ReportLines = New Collection
+    oldTrack = target.TrackRevisions
+    target.TrackRevisions = True
+    Application.ScreenUpdating = False
+
+    For r = 2 To tbl.Rows.Count
+        orig = "": rev = "": ruleTxt = "": itemNo = CStr(r - 1)
+        On Error Resume Next
+        orig = CellText(tbl.Cell(r, colOrig))
+        rev = CellText(tbl.Cell(r, colRev))
+        If colRule > 0 Then ruleTxt = CellText(tbl.Cell(r, colRule))
+        If colNo > 0 Then itemNo = CellText(tbl.Cell(r, colNo))
+        On Error GoTo 0
+        If Len(orig) = 0 Or orig = rev Then
+            skipped = skipped + 1
+            ReportLines.Add "Skipped" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & _
+                "Original empty or identical to revised"
+        ElseIf InStr(orig, vbCr) > 0 Or InStr(orig, Chr(11)) > 0 Then
+            skipped = skipped + 1
+            ReportLines.Add "Skipped" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & _
+                "Original spans more than one paragraph: apply by hand"
+        Else
+            res = ApplyOneChange(target, orig, rev, ruleTxt)
+            Select Case res
+                Case 1
+                    applied = applied + 1
+                    ReportLines.Add "Applied" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & Left(orig, 50) & " -> " & Left(rev, 50)
+                Case 0
+                    notFound = notFound + 1
+                    ReportLines.Add "NOT FOUND" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & Left(orig, 100)
+                Case Else
+                    ambiguous = ambiguous + 1
+                    ReportLines.Add "Found " & res & " times" & vbTab & itemNo & vbTab & "" & vbTab & ruleTxt & vbTab & _
+                        Left(orig, 100) & " (commented, not applied)"
+            End Select
+        End If
+    Next r
+
+    target.TrackRevisions = oldTrack
+    Application.ScreenUpdating = True
+    MsgBox applied & " change(s) applied with Track Changes." & vbCr & _
+           notFound & " not found, " & ambiguous & " found more than once, " & skipped & " skipped." & vbCr & vbCr & _
+           "See the report for details.", vbInformation, "IPBES"
+    WriteReport target, applied, "Change list applied", "Status|Item|-|Rule|Text"
+End Sub
+
+' Returns the index of the first table whose header row contains "Original" and "Revised", or 0.
+Private Function FindChangeTable(ByVal d As Document) As Long
+    Dim i As Long, h As String
+    For i = 1 To d.Tables.Count
+        On Error Resume Next
+        h = ""
+        h = LCase(d.Tables(i).Rows(1).Range.Text)
+        On Error GoTo 0
+        If InStr(h, "original") > 0 And (InStr(h, "revised") > 0 Or InStr(h, "corrected") > 0) Then
+            FindChangeTable = i
+            Exit Function
+        End If
+    Next i
+End Function
+
+' Text of a table cell without the end-of-cell marker and surrounding quotes or markdown.
+Private Function CellText(ByVal c As Cell) As String
+    Dim t As String, f As String, l As String
+    t = c.Range.Text
+    If Len(t) >= 2 Then t = Left(t, Len(t) - 2)          ' strip Chr(13) & Chr(7)
+    t = Trim(Replace(t, ChrW(160), " "))
+    If Left(t, 1) = "`" And Right(t, 1) = "`" And Len(t) >= 2 Then t = Mid(t, 2, Len(t) - 2)
+    If Len(t) >= 2 Then
+        f = Left(t, 1): l = Right(t, 1)
+        If (f = Chr(34) Or f = ChrW(8220)) And (l = Chr(34) Or l = ChrW(8221)) Then t = Mid(t, 2, Len(t) - 2)
+    End If
+    CellText = t
+End Function
+
+' Applies one change as a tracked change. Returns 1 if applied, 0 if not found,
+' or the number of matches (2 or more) if the text is not unique.
+Private Function ApplyOneChange(ByVal doc As Document, ByVal orig As String, ByVal rev As String, ByVal ruleTxt As String) As Long
+    Dim rng As Range, full As Range, found As Range, n As Long, key As String, guard As Long
+    key = Replace(Left(orig, 250), "^", "^^")
+    Set rng = doc.Content
+    With rng.Find
+        .ClearFormatting
+        .Text = key
+        .MatchCase = True
+        .MatchWildcards = False
+        .MatchWholeWord = False
+        .MatchSoundsLike = False
+        .MatchAllWordForms = False
+        .Forward = True
+        .Wrap = wdFindStop
+        .Format = False
+    End With
+    Do While rng.Find.Execute
+        guard = guard + 1
+        If guard > 200 Then Exit Do
+        Set full = doc.Range(rng.Start, rng.Start + Len(orig))
+        If NormQ(full.Text) = NormQ(orig) Then
+            n = n + 1
+            If n = 1 Then Set found = full.Duplicate
+        End If
+        rng.Collapse wdCollapseEnd
+    Loop
+    If n = 0 Then
+        ApplyOneChange = 0
+    ElseIf n > 1 Then
+        doc.Comments.Add found, TAG & "Change list: this text occurs " & n & " times, so it was not changed. " & _
+            "Apply by hand where needed: '" & Left(orig, 80) & "' -> '" & Left(rev, 80) & "'."
+        ApplyOneChange = n
+    Else
+        ApplyDiff doc, found, rev, ruleTxt
+        ApplyOneChange = 1
+    End If
+End Function
+
+' Replaces only the part that differs (snapped to word boundaries), so formatting
+' around the change is kept and the tracked change is easy to read.
+Private Sub ApplyDiff(ByVal doc As Document, ByVal full As Range, ByVal rev As String, ByVal ruleTxt As String)
+    Dim a As String, b As String, p As Long, s As Long, lo As Long, lr As Long, chg As Range, ins As String
+    a = NormQ(full.Text)
+    b = NormQ(rev)
+    lo = Len(a): lr = Len(b)
+    ' common prefix, snapped back to the start of a word
+    Do While p < lo And p < lr
+        If Mid(a, p + 1, 1) <> Mid(b, p + 1, 1) Then Exit Do
+        p = p + 1
+    Loop
+    Do While p > 0
+        If Mid(a, p, 1) = " " Then Exit Do
+        p = p - 1
+    Loop
+    ' common suffix (not overlapping the prefix), snapped to a word boundary
+    Do While s < lo - p And s < lr - p
+        If Mid(a, lo - s, 1) <> Mid(b, lr - s, 1) Then Exit Do
+        s = s + 1
+    Loop
+    Do While s > 0
+        If lo - s = 0 Then Exit Do                ' suffix starts at the beginning of the text
+        If Mid(a, lo - s + 1, 1) = " " Then Exit Do
+        If Mid(a, lo - s, 1) = " " Then Exit Do
+        s = s - 1
+    Loop
+    Set chg = doc.Range(full.Start + p, full.End - s)
+    ins = Mid(rev, p + 1, lr - p - s)
+    If chg.Start = chg.End Then
+        chg.InsertAfter ins
+    ElseIf Len(ins) = 0 Then
+        chg.Delete
+    Else
+        chg.Text = ins
+    End If
+    If Len(ruleTxt) > 0 Then
+        On Error Resume Next
+        doc.Comments.Add chg, TAG & ruleTxt
+        On Error GoTo 0
+    End If
+End Sub
+
+' Normalizes quotes, apostrophes, non-breaking spaces and hyphens for comparison
+' (one character for one character, so lengths are unchanged).
+Private Function NormQ(ByVal t As String) As String
+    t = Replace(t, ChrW(8216), "'")
+    t = Replace(t, ChrW(8217), "'")
+    t = Replace(t, ChrW(8220), Chr(34))
+    t = Replace(t, ChrW(8221), Chr(34))
+    t = Replace(t, ChrW(160), " ")
+    t = Replace(t, Chr(30), "-")
+    t = Replace(t, ChrW(8209), "-")
+    NormQ = t
+End Function
 
 ' ---------------------------------------------------------------------------
 ' Find helpers
@@ -816,8 +1049,9 @@ Private Function Norm(ByVal s As String) As String
     Norm = Trim(s)
 End Function
 
-Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title As String)
-    Dim rep As Document, rng As Range, i As Long, tbl As Table, parts() As String, line As Variant
+Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title As String, _
+                        Optional ByVal headers As String = "Category|Count|Safe fix|Rule|Example")
+    Dim rep As Document, rng As Range, i As Long, tbl As Table, parts() As String, line As Variant, h() As String
     Set rep = Documents.Add
     Set rng = rep.Content
     rng.Text = "IPBES " & title & ": " & src.Name & vbCr & _
@@ -832,11 +1066,10 @@ Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title 
     rng.Collapse wdCollapseEnd
     Set tbl = rep.Tables.Add(rng, ReportLines.Count + 1, 5)
     tbl.Borders.Enable = True
-    tbl.Cell(1, 1).Range.Text = "Category"
-    tbl.Cell(1, 2).Range.Text = "Count"
-    tbl.Cell(1, 3).Range.Text = "Safe fix"
-    tbl.Cell(1, 4).Range.Text = "Rule"
-    tbl.Cell(1, 5).Range.Text = "Example"
+    h = Split(headers, "|")
+    For i = 0 To 4
+        If i <= UBound(h) Then tbl.Cell(1, i + 1).Range.Text = h(i)
+    Next i
     tbl.Rows(1).Range.Font.Bold = True
     i = 1
     For Each line In ReportLines

@@ -5,7 +5,7 @@ Usage:
 
 DUMP_DIR holds the text dumps produced by tools/docx_dump.py (one per report,
 named YYYY-N.txt). Prints a Markdown table: one row per pattern, one column per
-report. Used to build skills/ipbes-editorial/references/evidence.md.
+report. Used to build ipbes-editorial/references/evidence.md.
 """
 import glob
 import os

@@ -3,7 +3,7 @@
 Usage (secretariat editor):
   1. Download https://ibok.ipbes.net/rest/v1/geo/data?format=application/rdf%2Bxml
      and save it as ipbes-geo.rdf
-  2. python build_countries.py ipbes-geo.rdf ../skills/ipbes-editorial/references/countries.csv
+  2. python build_countries.py ipbes-geo.rdf ../ipbes-editorial/references/countries.csv
 Standard library only.
 """
 import csv, sys, unicodedata, xml.etree.ElementTree as ET

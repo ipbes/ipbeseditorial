@@ -47,18 +47,30 @@ Colleagues usually ask for one of three things: an **analysis** or a **fix** of 
 
 ### B. Fix: "Fix the document and give me a corrected version to download"
 
+**Never rebuild the document from its text.** That loses the Word styles, numbering, masthead and footnotes, and invites rewording. Correct the original file with tracked changes instead.
+
 1. Check the document as in A.
-2. Correct the whole document for style and formatting:
-   - terms and names, spelling, capitalization, numbers, abbreviations, punctuation, inclusive language;
-   - Word styles, headings, numbering and tables (`report-structure.md`).
+2. Write a **change table** with the columns `No. | Original | Revised | Rule`:
+   - **Original** is the exact text copied from the document. It must be at least six words long (or a whole heading, such as "Introduction.") and unique in the document, and it must stay within one paragraph.
+   - **Revised** is the same text with only the corrections a rule requires.
+   - **Do not** add, drop or reword content, figures, names or meaning.
+   - **Do not** change tense except in Plenary reports, which are in reported speech.
+   - Voice problems ("must", "should") are **queries**, not fixes. So are structural problems: numbering gaps, lone subheadings and text not in the IPBES styles.
+   - Never change agreed text.
+3. If you can run code, apply the table to the original file:
 
-   Leave sentence structure alone unless it breaks a rule, and never change agreed text.
-3. **Output:**
-   - the corrected Word file, with tracked changes if the tools allow it;
-   - then a summary of each kind of change with counts ("'e.g.' → 'e.g.,' (7)");
-   - then **queries for the author**: anything you flagged but did not change.
+   ```
+   python3 scripts/apply_changes.py original.docx changes.md corrected.docx
+   ```
 
-   For pasted text (no file), return the corrected text with the same summary and queries.
+   Each change becomes a real Word tracked change, with the rule as a comment, and all formatting is kept. The script applies a change only if its original text is found exactly once. It lists anything not found or found more than once: fix those rows and run it again, or report them.
+4. **Output:**
+   - the corrected Word file;
+   - the change table;
+   - a short summary with counts;
+   - **queries for the author**: anything you flagged but did not change.
+
+   If you cannot run code, give the change table only. The user can apply it in Word with the `IPBES_ApplyChangeList` macro.
 
 ### C. Conversion: "Convert this Markdown draft into a Word document in the IPBES style"
 

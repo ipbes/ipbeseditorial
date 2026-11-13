@@ -25,7 +25,7 @@ Markdown supported:
 
 Typography: straight quotes and apostrophes become curly; " - " and "--" become an en dash.
 The script reports what it changed. It does NOT apply the editorial rules (see
-skills/ipbes-editorial/SKILL.md) - do that before or after converting.
+ipbes-editorial/SKILL.md) - do that before or after converting.
 """
 import argparse
 import copy
@@ -242,8 +242,31 @@ def add_table(doc, rows, footnotes):
                 txt = re.sub(r'(?<=\d),(?=\d{3}\b)', '\u00a0', txt)  # thousands: space in tables
             add_runs(p, typography(txt), footnotes, italic=(i == 0))
     table_rules(t)
+    table_layout(t, ncols)
     count('tables')
     return t
+
+
+TEXT_INDENT = 1247     # 2.2 cm: tables start where the paragraph text starts
+TEXT_WIDTH = 8250      # A4 width minus IPBES margins (2.5 + 1.75 cm) minus the 2.2 cm indent, in twips
+
+
+def table_layout(table, ncols):
+    """Indent the table to the text column and share the width: first column wider."""
+    from docx.shared import Twips
+    tblpr = table._tbl.tblPr
+    for tag in ('w:tblInd', 'w:tblW'):
+        for old in tblpr.findall(qn(tag)):
+            tblpr.remove(old)
+    w = OxmlElement('w:tblW'); w.set(qn('w:w'), str(TEXT_WIDTH)); w.set(qn('w:type'), 'dxa'); tblpr.append(w)
+    ind = OxmlElement('w:tblInd'); ind.set(qn('w:w'), str(TEXT_INDENT)); ind.set(qn('w:type'), 'dxa'); tblpr.append(ind)
+    table.autofit = False
+    first = TEXT_WIDTH // 2 if ncols > 1 else TEXT_WIDTH
+    rest = (TEXT_WIDTH - first) // (ncols - 1) if ncols > 1 else 0
+    widths = [first] + [rest] * (ncols - 1)
+    for row in table.rows:
+        for j, cell in enumerate(row.cells):
+            cell.width = Twips(widths[j])
 
 
 # ---------------------------------------------------------------- main conversion
@@ -273,11 +296,14 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
     para_buf = []
     pending_table_title = None
 
+    last_text = ['']          # text of the last body paragraph (to detect a chapeau ending with ':')
+
     def flush_para():
         nonlocal para_buf
         if not para_buf:
             return
         text = typography(' '.join(s.strip() for s in para_buf))
+        last_text[0] = text
         para_buf = []
         p = doc.add_paragraph(style='Normal_number' if numbered else 'Normal_No_number')
         add_runs(p, text, footnotes)
@@ -296,6 +322,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
             flush_para()
             level = len(m.group(1))
             text = typography(m.group(2).strip().rstrip('.') if not re.search(r'\b[a-z]\.$', m.group(2)) else m.group(2).strip())
+            last_text[0] = ''
             if level == 1:
                 p = doc.add_paragraph(style='BB_Title')
                 add_runs(p, text, footnotes)
@@ -376,10 +403,24 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
                     break
                 depth = len(lm.group(1).replace('\t', '    ')) // 2
                 marker = lm.group(2)
-                kind = 'bullet' if marker in '-*+' else 'ordered'
+                if marker in '-*+':
+                    kind = 'bullet'
+                elif marker[0].isdigit():
+                    kind = 'num'
+                elif re.match(r'^\(?[ivx]+\)$', marker) and depth > 0:
+                    kind = 'roman'
+                else:
+                    kind = 'alpha'
                 items.append([depth, kind, lm.group(3)])
                 i += 1
             base = min(d for d, _, _ in items)
+            # A top-level numbered list (1., 2.) with no chapeau (previous paragraph not
+            # ending with ':') continues the paragraph numbering, as in IPBES reports.
+            # A list after a chapeau, or lettered (a), (b), is a list of subparagraphs.
+            after_chapeau = last_text[0].rstrip().endswith(':')
+            top_kind = next(k for d, k, _ in items if d == base)
+            continues_paras = (top_kind == 'num' and not after_chapeau)
+            shift = 0 if continues_paras else 1
             idx = {}
             for depth, kind, text in items:
                 d = depth - base
@@ -393,15 +434,21 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
                     set_indent(p, 2.2 + 0.6 * (d + 1), 0.6)
                     p.add_run('\u2022\t')
                 elif numbered and num_id:
-                    # (a) at level 1, (i) at level 2 of the body numbering
+                    # level 0 = paragraph number (1.), level 1 = (a), level 2 = (i)
                     p = doc.add_paragraph(style='Normal_number')
-                    set_num(p, num_id, min(d + 1, 4))
+                    if d + shift > 0:
+                        set_num(p, num_id, min(d + shift, 4))
                 else:
                     p = doc.add_paragraph(style='Normal_No_number')
-                    set_indent(p, 2.2 + 1.1 * (d + 1), 1.1)
-                    p.add_run(label_for(['alpha', 'roman', 'num'][min(d, 2)], n) + '\t')
+                    lvl = d + shift
+                    if lvl == 0:
+                        p.add_run(label_for('num', n) + '\t')
+                    else:
+                        set_indent(p, 2.2 + 1.1 * lvl, 1.1)
+                        p.add_run(label_for(['alpha', 'roman', 'num'][min(lvl - 1, 2)], n) + '\t')
                 add_runs(p, text, footnotes)
                 count('list items')
+            last_text[0] = text
             continue
 
         para_buf.append(s)
