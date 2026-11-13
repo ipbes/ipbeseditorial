@@ -809,7 +809,7 @@ Public Sub IPBES_FixFormatting()
     Dim nPage As Long, nHeadings As Long, nLabels As Long, nBody As Long, nNumbers As Long
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
-    Dim otherStyles As String, nHeaders As Long
+    Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -858,12 +858,18 @@ Public Sub IPBES_FixFormatting()
 
     ' 1. Style definitions from the add-in, then the key IPBES formats set explicitly
     '    (so the result does not depend on how Word merged the copied styles)
-    On Error Resume Next
-    doc.CopyStylesFromTemplate ThisDocument.FullName
-    stylesCopied = (Err.Number = 0)
-    Err.Clear
-    On Error GoTo 0
-    EnsureIPBESStyles doc
+    '    A document that already uses the IPBES styles keeps its own definitions.
+    If alreadyIPBES Then
+        stylesCopied = True
+    Else
+        Application.StatusBar = "IPBES formatting: styles..."
+        On Error Resume Next
+        doc.CopyStylesFromTemplate ThisDocument.FullName
+        stylesCopied = (Err.Number = 0)
+        Err.Clear
+        On Error GoTo 0
+        EnsureIPBESStyles doc
+    End If
 
     ' 2. Page set-up
     nPage = SetIPBESPage(doc)
@@ -873,7 +879,13 @@ Public Sub IPBES_FixFormatting()
     typedMode = numbered And (CountTypedNumbers(doc, startBody, numbered, alreadyIPBES) >= 3)
     Set tbls = TableRanges(doc)
     ti = 1
+    nParas = doc.Paragraphs.Count
     For Each p In doc.Paragraphs
+        iPara = iPara + 1
+        If iPara Mod 200 = 0 Then
+            Application.StatusBar = "IPBES formatting: paragraph " & iPara & " of " & nParas & "..."
+            DoEvents
+        End If
         If p.Range.Start >= startBody Then
             If Not InTableFast(p.Range.Start, tbls, ti) Then
                 sName = StyleName(p)
@@ -919,30 +931,36 @@ Public Sub IPBES_FixFormatting()
                             End If
                             If target = "Normal_number" Then nNumbered = nNumbered + 1
                             nBody = nBody + 1
-                            If nBody Mod 50 = 0 Then Application.StatusBar = "IPBES formatting: " & nBody & " paragraphs..."
                         End If
                     Case "LIST"
                         nLists = nLists + 1
                     Case ""
-                        If Not IsIPBESStyle(sName) And Len(txt) > 0 Then NoteStyle otherStyles, sName
+                        If Not IsIPBESStyle(sName) And Len(txt) > 0 And sName <> bnNormal Then NoteStyle otherStyles, sName
                 End Select
             End If
         End If
     Next p
 
     ' 4. Tables (not the masthead) and the caption line above them
-    Application.StatusBar = "IPBES formatting: tables..."
+    iTable = 0
     For Each t In doc.Tables
+        iTable = iTable + 1
+        Application.StatusBar = "IPBES formatting: table " & iTable & " of " & doc.Tables.Count & "..."
+        DoEvents
         If t.Range.Start >= startBody And t.NestingLevel = 1 Then
             If FixTableCaption(doc, t) Then nCaptions = nCaptions + 1
-            FormatTable doc, t
+            If alreadyIPBES Then
+                FitTableToText t
+            Else
+                FormatTable doc, t
+            End If
             nTables = nTables + 1
         End If
     Next t
 
     ' 5. Page headers and footers (symbol and page number, IPBES layout)
     Application.StatusBar = "IPBES formatting: headers and footers..."
-    nHeaders = FixHeadersFooters(doc)
+    If Not alreadyIPBES Then nHeaders = FixHeadersFooters(doc)
 
     ' Restore settings
     On Error Resume Next
@@ -964,13 +982,17 @@ Public Sub IPBES_FixFormatting()
     If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
     If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
     If nPage > 0 Then msg = msg & "Sections set to A4 with IPBES margins: " & nPage & vbCr
-    If nHeaders > 0 Then msg = msg & "Page headers and footers rebuilt (symbol, page numbers): " & nHeaders & vbCr Else _
+    If nHeaders > 0 Then
+        msg = msg & "Page headers and footers rebuilt (symbol, page numbers): " & nHeaders & vbCr
+    ElseIf Not alreadyIPBES Then
         msg = msg & "Page headers left as they were (no IPBES/.. symbol found)" & vbCr
+    End If
     If nEmpty + nLists > 0 Or Len(otherStyles) > 0 Then msg = msg & vbCr & "Left for you:" & vbCr
     If nEmpty > 0 Then msg = msg & "- " & nEmpty & " empty paragraph(s)" & vbCr
     If nLists > 0 Then msg = msg & "- " & nLists & " list paragraph(s): IPBES uses (a), (b), (i)" & vbCr
     If Len(otherStyles) > 0 Then msg = msg & "- unchanged styles: " & Left(Replace(otherStyles, "|", "; "), 200) & vbCr
-    If alreadyIPBES Then msg = msg & vbCr & "The document already used IPBES styles, so Normal paragraphs were left as they were." & vbCr
+    If alreadyIPBES Then msg = msg & vbCr & "The document already used the IPBES styles: its style definitions, headers, " & _
+        "footers, table layout and Normal paragraphs were kept; only other paragraphs, captions and over-wide tables were changed." & vbCr
     msg = msg & vbCr & "Next: run Check document for heading numbering, lone subheadings and the masthead."
     MsgBox msg, vbInformation, "IPBES"
 End Sub
@@ -1224,15 +1246,18 @@ Private Function SetIPBESPage(ByVal doc As Document) As Long
             End If
             If Abs(.PageWidth - w) > 1 Or Abs(.PageHeight - h) > 1 Or Abs(.TopMargin - CentimetersToPoints(1.6)) > 1 Or _
                Abs(.BottomMargin - CentimetersToPoints(2.5)) > 1 Or Abs(.LeftMargin - CentimetersToPoints(2.5)) > 1 Or _
-               Abs(.RightMargin - CentimetersToPoints(1.75)) > 1 Then n = n + 1
-            .PageWidth = w
-            .PageHeight = h
-            .TopMargin = CentimetersToPoints(1.6)
-            .BottomMargin = CentimetersToPoints(2.5)
-            .LeftMargin = CentimetersToPoints(2.5)
-            .RightMargin = CentimetersToPoints(1.75)
-            .HeaderDistance = CentimetersToPoints(0.95)
-            .FooterDistance = CentimetersToPoints(1.72)
+               Abs(.RightMargin - CentimetersToPoints(1.75)) > 1 Then
+                ' only when something differs: every assignment makes Word lay out the document again
+                n = n + 1
+                .PageWidth = w
+                .PageHeight = h
+                .TopMargin = CentimetersToPoints(1.6)
+                .BottomMargin = CentimetersToPoints(2.5)
+                .LeftMargin = CentimetersToPoints(2.5)
+                .RightMargin = CentimetersToPoints(1.75)
+                .HeaderDistance = CentimetersToPoints(0.95)
+                .FooterDistance = CentimetersToPoints(1.72)
+            End If
         End With
     Next sec
     On Error GoTo 0
@@ -1572,13 +1597,21 @@ Private Sub FormatTable(ByVal doc As Document, ByVal t As Table)
     On Error Resume Next
     t.Rows.LeftIndent = CentimetersToPoints(2.2)
     FitTableToText t
+    ' whole-table operations (one change each, instead of one per cell)
     t.Borders.Enable = False
     t.Shading.BackgroundPatternColor = wdColorAutomatic
+    t.Range.Cells.Shading.BackgroundPatternColor = wdColorAutomatic
+    t.Range.Style = doc.Styles("Normal-pool")
+    ' numbers right-aligned: only cells that need it
     For Each c In t.Range.Cells
-        c.Shading.BackgroundPatternColor = wdColorAutomatic
-        c.Range.Style = doc.Styles("Normal-pool")
-        txt = CellText(c)
-        If c.RowIndex > 1 And IsNumericCell(txt) Then c.Range.ParagraphFormat.Alignment = wdAlignParagraphRight
+        If c.RowIndex > 1 Then
+            txt = CellText(c)
+            If IsNumericCell(txt) Then
+                If c.Range.ParagraphFormat.Alignment <> wdAlignParagraphRight Then
+                    c.Range.ParagraphFormat.Alignment = wdAlignParagraphRight
+                End If
+            End If
+        End If
     Next c
     With t.Rows(1)
         .HeadingFormat = True
