@@ -48,21 +48,6 @@ The macros check a document against the house style and mark possible issues as 
 - The comments are suggestions, not errors. For example, "should" in reported speech, or "Secretariat" in a budget table, is correct.
 - To keep the document readable, the macros mark at most 25 places per rule. The report shows the full count.
 
-   - **Windows:** `%APPDATA%\Microsoft\Word\STARTUP` (paste this into the File Explorer address bar).
-   
-
-
-1. Import the latest `IPBESEditorial.bas` into `IPBES Editorial.dotm` (see "Updating the add-in" below), save it, and **close Word completely**.
-2. In a WSL terminal in the repository folder, run:
-
-   ```
-   python3 tools/prepare_addin.py "$(wslpath "$(cmd.exe /c 'echo %APPDATA%' | tr -d '\r')")/Microsoft/Word/STARTUP/IPBES Editorial.dotm"
-   ```
-
-   The script copies the IPBES styles and numbering from `ipbes-editorial/assets/ipbes-document-template.docx` into the add-in and adds the ribbon tab from `word-macro/ipbes-ribbon.xml`. It keeps a backup (`IPBES Editorial.dotm.bak`). Run it again after any change to either file. Importing a new `.bas` into the `.dotm` doesn't remove the tab or the styles.
-3. Start Word. The **IPBES** tab is now there.
-
-
 ### Updating the add-in after a new version of the macros
 
 1. Close Word completely.
@@ -70,6 +55,14 @@ The macros check a document against the house style and mark possible issues as 
 3. Press **Alt+F11**. Under the template's project, right-click **Modules → IPBESEditorial**, choose **Remove IPBESEditorial…**, and answer **No** to exporting it.
 4. Choose **File → Import File…**, select the new `word-macro/IPBESEditorial.bas`, then choose **Debug → Compile**.
 5. Save, close Word, and start it again.
+6. In a WSL terminal in the repository folder, run:
+
+   ```
+   python3 tools/prepare_addin.py "$(wslpath "$(cmd.exe /c 'echo %APPDATA%' | tr -d '\r')")/Microsoft/Word/STARTUP/IPBES Editorial.dotm"
+   ```
+
+   The script copies the IPBES styles and numbering from `ipbes-editorial/assets/ipbes-document-template.docx` into the add-in and adds the ribbon tab from `word-macro/ipbes-ribbon.xml`. It keeps a backup (`IPBES Editorial.dotm.bak`). Run it again after any change to either file. Importing a new `.bas` into the `.dotm` doesn't remove the tab or the styles.
+
 
 ### Using the macros
 
