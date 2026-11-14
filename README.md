@@ -1,4 +1,4 @@
-# ipbeseditorial
+# IPBES official documents editing and formatting tool
 
 Editorial tools for English IPBES documents: the IPBES house style for AI assistants (Copilot and Claude), Word macros that check documents and apply corrections as tracked changes, and a Markdown-to-Word converter that produces documents in the IPBES style.
 
