@@ -1,6 +1,6 @@
 # IPBES official documents editing and formatting tool
 
-Editorial tools for English IPBES documents: the IPBES house style for AI assistants (Copilot and Claude), Word macros that check documents and apply corrections as tracked changes, and a Markdown-to-Word converter that produces documents in the IPBES style.
+Editorial tools for English IPBES documents: the IPBES house style for MS Word macros and AI assistants (Copilot and Claude), that check documents and apply corrections as tracked changes, and a Markdown-to-Word converter that produces documents in the IPBES style.
 
 **Editorial principle:** the UN Editorial Manual is the baseline. IPBES departs from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [evidence.md](ipbes-editorial/references/evidence.md).
 
