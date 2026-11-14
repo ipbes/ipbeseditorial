@@ -106,23 +106,27 @@ If you can't or don't want to set up an agent, start a new Copilot chat and past
 
 ### What to ask
 
-Attach the document, then ask one of three things:
+Pick the task, attach the document, and paste the prompt. Start a **new chat** for each document.
 
-1. **Analysis:** "Analyse the attached document against the IPBES editorial criteria."
+| I want… | Use | Prompt to paste |
+|---|---|---|
+| **A list of problems**, nothing changed | Copilot | `Analyse the attached document against the IPBES editorial rules. Do not change anything.` |
+| **A Markdown draft turned into an IPBES Word document** | Copilot | `Convert the attached Markdown into an IPBES Word document with the skill's script scripts/md_to_ipbes_docx.py, using --numbered --number-headings. Return the Word file and the queries.` |
+| **A clean, edited Word document** in the IPBES styles | Copilot | `Edit the attached document to the IPBES rules. Return a clean Word file made with the skill's script scripts/md_to_ipbes_docx.py, using --numbered --number-headings, plus the change table and the queries.` |
+| **Tracked changes in my own document** | Copilot, then Word | `Give me a change list only for the attached document: one table with No. / Original / Revised / Rule, and the queries.` Paste the table into a new Word document, then press **Apply change list** in your document. |
+| **Formatting only** (styles, numbering, tables, margins) | Word | No prompt: press **Fix formatting** on the IPBES tab. |
 
-   The assistant goes through the whole document and reports where it departs from the house style and formatting requirements, grouped by category. It does not change anything.
-2. **Fixing:** "Edit and format the attached document."
+Leave out `--numbered` for documents without numbered paragraphs, such as notes and web text.
 
-   Copilot returns a **new Word file**, edited and in the IPBES styles, with a table of every change (No. | Original | Revised | Rule) and a list of queries for the author. Copilot only receives the text of your document, so the new file has no tracked changes, and the masthead, images and page headers are not carried over.
+**After a Copilot Word file comes back:**
 
-   To see what changed, open the new file in Word and choose **Review → Compare → Compare…**, with your document as the original and Copilot's file as the revised document.
+- **Check the styles.** Click a heading: the style box on the Home tab should say **CH1** or **CH2**, not **Heading 1**. If it says Heading 1, Copilot didn't use the script: press **Fix formatting** on the IPBES tab, then **Review → Accept → Accept All Changes**.
+- **See what changed:** **Review → Compare → Compare…**, with your document as the original and Copilot's file as the revised one. Under **More**, untick **Formatting** to see only the wording changes.
+- **Copy across what Copilot can't carry over:** the masthead, images and page headers.
 
-   If you need tracked changes in your own document instead, ask for "a change list only", paste the table into a new Word document, and run **Apply change list** in your document (section 1).
-3. **Conversion:** "Convert the attached Markdown draft into a Word document in the IPBES style."
+**Use the Word macros instead of Copilot** for long reports and for scanned (OCR) documents. Copilot only receives the extracted text, and it struggles with long or damaged text. In Word, run **Fix formatting**, then **Check document** and **Safe fixes**, on the document itself.
 
-   The assistant applies the language rules and returns a Word file in the IPBES styles.
-
-**Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or decisions. Report it if it ever does.
+**Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or what was decided. Report it if it ever does.
 
 ## 3. Using the assistant with Claude
 

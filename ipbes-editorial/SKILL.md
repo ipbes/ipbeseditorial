@@ -69,11 +69,17 @@ Treat any request to edit, correct, proofread or format a document ("edit and fo
    Each change becomes a real Word tracked change, with the rule as a comment, and all formatting is kept. The script applies a change only if its original text is found exactly once. It lists anything not found or found more than once: fix those rows and run it again, or report them.
 3. **Output:** the corrected Word file, the change table, a short summary with counts, and **queries for the author**. Formatting (styles, numbering, tables, layout) is not changed on this route: the user runs **Fix formatting** on the IPBES tab in Word (`IPBES_FixFormatting` macro).
 
-**Route 2: you only have the document's extracted text** (as in Copilot). You cannot edit the original, so produce a new, edited document in the IPBES styles. Do not ask for the file again.
+**Route 2: you only have the document's extracted text** (as in Copilot). You cannot edit the original, so produce a new, edited document in the IPBES styles. The extracted text is expected and is enough to work from: never ask for the file again, never say that you need the original or "binary" file, and never decline because formatting was lost in extraction. If part of the text is missing or garbled, edit what is there and list the gaps as queries. For a long document, work through it section by section until the whole text is done; do not stop at a sample.
 
 1. Rewrite the text as Markdown. Keep **every** heading, paragraph, list item, table and footnote, in the same order: `#` title, `##`/`###`/`####` headings (without their typed numbers), tables as Markdown tables with "Table 1: Title" and the headnote on the lines above, footnotes as `[^1]`. Leave out typed paragraph numbers.
 2. Apply the corrections in that Markdown, following the editing rules above.
 3. Convert it as in C (`scripts/md_to_ipbes_docx.py`, with `--numbered` if the original has numbered paragraphs, `--number-headings` if its headings are numbered, and `--symbol` if it has a document symbol).
+
+   ```
+   python3 scripts/md_to_ipbes_docx.py draft.md edited.docx --numbered --number-headings
+   ```
+
+   **Check before returning it:** the file must use the IPBES styles (CH1, Normal_number or Normal_No_number, Title_table). If it shows Heading 1 and Normal, it was not made by this script: make it again with the script. Never build the Word file with your own code.
 4. **Output:**
    - the new Word file;
    - the change table and a short summary with counts;
