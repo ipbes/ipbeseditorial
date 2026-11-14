@@ -91,7 +91,17 @@ The rules are in the `BuildRules` procedure, one `AddRule` line each. A line giv
 
 ## 2. Using the assistant with Copilot
 
-The assistant can **analyse** a document against the house style, **fix** it, and **convert** a Markdown draft into a Word document in the IPBES style. Copilot **cannot produce a document with tracked changes**. To set up a reusable Copilot agent:
+The assistant can **analyse** a document against the house style, **edit** it, and **convert** a Markdown draft into a Word document in the IPBES style. Copilot **cannot produce a document with tracked changes**.
+
+### Opening the shared agent
+
+The secretariat has a shared agent, so you don't need to set anything up:
+
+1. Open **Microsoft 365 Copilot Chat**.
+2. Search the agents for **IPBES editorial assistant** and open it.
+3. Attach your document and paste one of the prompts below.
+
+### Setting up the agent (secretariat editor only)
 
 1. Open **Microsoft 365 Copilot Chat** and choose **Create agent** (it may be called **New agent**).
 2. On the **Configure** tab, fill in the fields:
@@ -99,10 +109,9 @@ The assistant can **analyse** a document against the house style, **fix** it, an
    - **Description:** Edits and standardizes English IPBES documents in the IPBES and UN house style.
    - **Instructions:** paste the whole text of `ipbes-editorial/copilot/ipbes-editorial-instructions.txt`.
 3. Under **Skills**, select **Add** and upload `ipbes-editorial.zip`. It holds the full rules (house style, terms, country list, spelling list). To make it, run `python3 tools/package_skill.py` in the repository folder. Leave **Knowledge** empty.
+4. Select **Create**, then share the agent with the secretariat.
 
-4. Select **Create**. Share the agent with colleagues if that is allowed, so that only one person builds and uploads the zip.
-
-If you can't or don't want to set up an agent, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
+After any change to the rules, update the instructions and upload the new zip to the same agent (see section 4), so that colleagues keep using one agent.
 
 ### What to ask
 
