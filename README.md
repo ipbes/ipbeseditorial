@@ -16,7 +16,7 @@ Editorial tools for English IPBES documents: the IPBES house style for MS Word m
 
    If Windows says the folder cannot be found, paste `%APPDATA%\Microsoft\Word` instead, create a new folder there called `STARTUP`, and open it.
 
-- **Mac:** `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word`.
+   **Mac:** the Startup folder is `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word`. Skip step 4.
 
 4. **Unblock the file:** Windows blocks macros in files downloaded from the internet. Press the **Windows key**, type **PowerShell**, open it, paste this command, and press **Enter**:
 
@@ -25,27 +25,32 @@ Editorial tools for English IPBES documents: the IPBES house style for MS Word m
    ```
 
    No message means it worked.
-5. **Start Word.** An **IPBES** tab appears after the **Review** tab. See "Using the macros" below for what each button does.
+5. **Start Word.** An **IPBES** tab appears after the **Review** tab. Section 1 below explains what each button does.
 
-If the tab doesn't appear, see "If the macros don't appear" below, or ask for help.
-
-6. **Macro security:** if the macros are blocked, check **File → Options → Trust Center → Trusted Locations**; the Startup folder is normally trusted. If the organization blocks macros, ask IT to sign the `.dotm` or to trust its location. Do not lower macro security for all documents
+**If the tab doesn't appear or the macros are blocked:** go to **File → Options → Add-ins**, set **Manage** to **Templates**, select **Go…**, and check that `IPBES Editorial.dotm` is listed and ticked. Also check **File → Options → Trust Center → Trusted Locations**; the Startup folder is normally trusted. If the organization blocks macros, ask IT to sign the `.dotm` or to trust its location. Do not lower macro security for all documents.
 
 ## 1. Microsoft Word VBA macros (No AI)
 
 The macros check a document against the house style and mark possible issues as Word comments. They work in Word itself, without AI and without an internet connection.
 
+**Typical order** (save a copy of the document first):
+
+1. **Fix formatting**: answer whether the document has numbered paragraphs, then review the tracked changes.
+2. **Check document**: read the report, then step through the comments with **Review → Next comment**.
+3. **Safe fixes** (optional): accept or reject each tracked change.
+4. **Remove IPBES comments** when you have finished.
+
 ### IPBES_CheckDocument
 Adds a comment starting "[IPBES]" at each possible issue and opens a summary report. Checks the Platform's name, internal codes (BBA, NXS…), abbreviations, numbers and dates, punctuation, spelling, terms, country names, inclusive language, the masthead (logos, symbol, date, spacing) and heading numbering.
 
 ### IPBES_FixFormatting
-Applies the IPBES layout, which needs the IPBES styles in the add-in (see "IPBES tab and IPBES styles" below). It asks whether the document is a report with numbered paragraphs. It then: copies the IPBES Word styles into the document; sets A4 paper and the IPBES margins; turns Title, Heading 1–4 and Caption into BB_Title, CH1–CH4 and Title_table, laying out heading numbers as tab, "I.", tab; puts body text in Normal_number (numbered) or Normal_No_number, removing typed paragraph numbers and manual fonts, sizes, colours and indents (bold and italic are kept); deletes empty spacer paragraphs (the IPBES styles provide the spacing); turns "Table 1: Title" captions and "(Number)" headnotes into the IPBES table title; and formats tables (indented to the text, horizontal rules only, no shading, italic column heads, numbers right-aligned). Documents that already use the IPBES styles (such as recent Plenary reports) keep their own style definitions, headers, footers, table layout and Normal paragraphs; only other paragraphs, captions and over-wide tables are changed, so the run is quick. It ends with a short summary; the tracked changes are the detailed record, and Ctrl+Z undoes the whole run. Lists, empty paragraphs and unrecognised styles are listed for you to check. Style and text changes tracked; page set-up and style definitions are not)
+Applies the IPBES layout, using the IPBES styles carried in the add-in. It asks whether the document is a report with numbered paragraphs. It then: copies the IPBES Word styles into the document; sets A4 paper and the IPBES margins; turns Title, Heading 1–4 and Caption into BB_Title, CH1–CH4 and Title_table, laying out heading numbers as tab, "I.", tab; puts body text in Normal_number (numbered) or Normal_No_number, removing typed paragraph numbers and manual fonts, sizes, colours and indents (bold and italic are kept); deletes empty spacer paragraphs (the IPBES styles provide the spacing); turns "Table 1: Title" captions and "(Number)" headnotes into the IPBES table title; and formats tables (indented to the text, horizontal rules only, no shading, italic column heads, numbers right-aligned). Documents that already use the IPBES styles (such as recent Plenary reports) keep their own style definitions, headers, footers, table layout and Normal paragraphs; only other paragraphs, captions and over-wide tables are changed, so the run is quick. It ends with a short summary; the tracked changes are the detailed record, and Ctrl+Z undoes the whole run. Lists, empty paragraphs and unrecognised styles are listed for you to check. Style and text changes are tracked; page set-up and style definitions are not.
 
 ### IPBES_SafeFixes
 Makes safe corrections **with Track Changes on**: the shortened Platform name, "e.g." → "e.g.,", -ise → -ize, em dashes and spaced hyphens → en dashes, double spaces, straight → curly quotes, country names such as Türkiye and Czechia, "Indigenous Peoples", "spatial planning and connectivity assessment", and a few spellings.
 
 ### IPBES_CheckVoice
-Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for review. IPBES is policy-relevant, not policy-prescriptive. | No |
+Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for review. IPBES is policy-relevant, not policy-prescriptive.
 
 ### IPBES_ApplyChangeList
 Applies a change table from Copilot or Claude (columns **Original** and **Revised**, optionally **Rule**) to the open document, as tracked changes, keeping all formatting. A change is made only if its original text is found exactly once. Text found more than once gets a comment instead, and the closing message lists the items not applied.
@@ -97,7 +102,7 @@ The assistant can **analyse** a document against the house style, **fix** it, an
 
 4. Select **Create**. Share the agent with colleagues if that is allowed.
 
-if you can't or don't want to set up an agent, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
+If you can't or don't want to set up an agent, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
 
 ### What to ask
 
@@ -108,9 +113,9 @@ Attach the document, then ask one of three things:
    The assistant goes through the whole document and reports where it departs from the house style and formatting requirements, grouped by category. It does not change anything.
 2. **Fixing:** "Fix the attached document to match the IPBES style and formatting requirements."
 
-   Copilot returns a **change table** (No. | Original | Revised | Rule) and a list of queries for the author. It does not return a new file, because a file created by Copilot loses the Word styles and cannot show tracked changes. To apply the table:
+   Copilot cannot change formatting: run **Fix formatting** (section 1) first; Copilot handles the wording. It returns a **change table** (No. | Original | Revised | Rule) and a list of queries for the author. It does not return a new file, because a file created by Copilot loses the Word styles and cannot show tracked changes. To apply the table:
    1. Copy the table from Copilot and paste it into a new Word document.
-   2. Open the document to correct, and run the **IPBES_ApplyChangeList** macro (section 3).
+   2. Open the document to correct, and run the **IPBES_ApplyChangeList** macro (section 1).
 
    Each change is made as a tracked change, with the rule as a comment, and the formatting is kept. You then accept or reject each change.
 3. **Conversion:** "Convert the attached Markdown draft into a Word document in the IPBES style."
@@ -124,7 +129,7 @@ Attach the document, then ask one of three things:
 - **Claude (web or desktop app):** package the skill as `ipbes-editorial.zip` (see section 4). Upload it under **Settings → Capabilities → Skills**. Claude then uses the skill whenever you ask it to edit an IPBES document.
 - **Claude Code:** copy the `ipbes-editorial` folder into `~/.claude/skills/` (`cp -r ipbes-editorial ~/.claude/skills/`).
 
-You ask for things the same way as in section 1. The difference is that Claude can run code on the file itself:
+You ask for things the same way as in section 2. The difference is that Claude can run code on the file itself:
 
 - **Fixing:** Claude writes the change table and applies it to your original Word file with `apply_changes.py`. You get your document back with tracked changes, comments giving the rules, and all formatting kept. You don't need to run the macro yourself.
 - **Conversion:** Claude uses the converter script with the IPBES template, so the Word file has the IPBES styles.
@@ -140,7 +145,7 @@ Run these commands from the repository folder. The scripts need Python 3; the Wo
 
 | Task | Command |
 |---|---|
-| Add or update the IPBES styles and ribbon tab in the Word add-in | `python3 tools/prepare_addin.py "path/to/IPBES Editorial.dotm"` (close Word first; see section 3) |
+| Add or update the IPBES styles and ribbon tab in the Word add-in | `python3 tools/prepare_addin.py "path/to/IPBES Editorial.dotm"` (close Word first; see "Updating the add-in" in section 1) |
 | Package the skill for Claude | `python3 tools/package_skill.py` (creates `ipbes-editorial.zip`, with the `ipbes-editorial` folder that Claude expects) |
 | Convert a Markdown draft to Word | `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py draft.md draft.docx --numbered --symbol IPBES/13/5` (leave out `--numbered` for documents without numbered paragraphs). Test: `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py test/ipbes-test-draft.md test-draft.docx --numbered --number-headings` |
 | Apply a change table to a Word file as tracked changes | `python3 ipbes-editorial/scripts/apply_changes.py document.docx changes.md corrected.docx`. The change table can be Markdown, CSV, JSON or a Word table. Test: `python3 ipbes-editorial/scripts/apply_changes.py test/ipbes-test-document.docx test/ipbes-test-change-list.docx test-corrected.docx` |
@@ -190,7 +195,7 @@ These assets were extracted from the *IPBES Logo and Visual Identity Guidelines*
 | `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](ipbes-editorial/references/evidence.md) |
 | `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter) and `apply_changes.py` (applies a change table to a Word file as tracked changes) |
 | `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
-| `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 3 |
+| `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 1 |
 | `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-unformatted.docx` (a document in Word's default formatting, for **Fix formatting**), `ipbes-test-change-list.docx` (a change table for that document) and `ipbes-test-draft.md` (a Markdown draft with typical errors) |
 | `tools/` | Maintenance scripts (see section 4) |
 | `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
