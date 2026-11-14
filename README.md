@@ -4,22 +4,6 @@ Editorial tools for English IPBES documents: the IPBES house style for AI assist
 
 **Editorial principle:** the UN Editorial Manual is the baseline. IPBES departs from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [evidence.md](ipbes-editorial/references/evidence.md).
 
-## Contents
-
-| Path | Contents |
-|---|---|
-| [ipbes-editorial/SKILL.md](ipbes-editorial/SKILL.md) | Instructions Claude reads first |
-| [ipbes-editorial/copilot/ipbes-editorial-instructions.txt](ipbes-editorial/copilot/ipbes-editorial-instructions.txt) | The same rules, condensed for Copilot |
-| `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](ipbes-editorial/references/evidence.md) |
-| `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter) and `apply_changes.py` (applies a change table to a Word file as tracked changes) |
-| `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
-| `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 3 |
-| `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-unformatted.docx` (a document in Word's default formatting, for **Fix formatting**), `ipbes-test-change-list.docx` (a change table for that document) and `ipbes-test-draft.md` (a Markdown draft with typical errors) |
-| `tools/` | Maintenance scripts (see section 4) |
-| `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
-
----
-
 
 ## 1. Microsoft Word VBA macros (No AI)
 
@@ -227,6 +211,21 @@ These assets were extracted from the *IPBES Logo and Visual Identity Guidelines*
   - Fine for any text: Teal, Grey, True Red, Plum, Purple, Faded Purple, Navy Blue, Denim Blue, Lagoon Blue, Dark Grey, Forest Green.
   - Large text only: Orange, Medium Teal, Spring Green, Mole Grey, Foam Green.
   - Never for text: Light Green, Yellow, the secondary Orange, Ice Grey, Medium Green, Light Grey.
+
+
+## Contents
+
+| Path | Contents |
+|---|---|
+| [ipbes-editorial/SKILL.md](ipbes-editorial/SKILL.md) | Instructions Claude reads first |
+| [ipbes-editorial/copilot/ipbes-editorial-instructions.txt](ipbes-editorial/copilot/ipbes-editorial-instructions.txt) | The same rules, condensed for Copilot |
+| `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](ipbes-editorial/references/evidence.md) |
+| `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter) and `apply_changes.py` (applies a change table to a Word file as tracked changes) |
+| `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
+| `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 3 |
+| `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-unformatted.docx` (a document in Word's default formatting, for **Fix formatting**), `ipbes-test-change-list.docx` (a change table for that document) and `ipbes-test-draft.md` (a Markdown draft with typical errors) |
+| `tools/` | Maintenance scripts (see section 4) |
+| `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
 
 ---
 
