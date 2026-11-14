@@ -170,7 +170,7 @@ These formulas recur in every recent report. They are deliberate, so keep them; 
 - Opening: "The Plenary," on its own line (`Normal_No_number`, roman type).
 - **Preambular paragraphs** begin with an italic participle ("*Recalling*", "*Welcoming*", "*Acknowledging with appreciation*") and end with a comma. They are not numbered.
 - **Operative paragraphs** are numbered (`Normal_number`). They begin with an italic verb in the third person ("*Decides*", "*Requests* the Executive Secretary", "*Also requests*", "*Further invites*", "*Approves*", "*Welcomes*", "*Takes note of*") and end with a semicolon. The last one ends with a full stop.
-- The text of decisions is **agreed text**. Do not edit wording, spelling or punctuation, even if it departs from house style. Flag issues for the secretariat instead.
+- Decisions are edited like the rest of the document: correct spelling, punctuation, terms and format to house style. Do not change what a decision decides, requests or approves.
 
 ## 7. Converting Markdown to an IPBES-style Word document
 

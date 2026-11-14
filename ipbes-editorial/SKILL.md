@@ -24,8 +24,8 @@ Read only what the task needs.
 ## Rules that override everything else
 
 1. **Never change meaning.** Do not invent or alter figures, names, dates, quotations, document symbols or decisions. If something looks wrong or is missing, flag it.
-2. **Agreed text is not edited.** This covers decisions, approved summaries for policymakers and quotations. Report issues in it as comments only.
-3. **Voice: policy-relevant, not policy-prescriptive.** In IPBES-authored narrative, present findings and options ("could", "options include"). Do not tell Governments what they "must" or "should" do. Keep such wording when it reports a speaker's view or is agreed text.
+2. **Every document is open for editing.** The secretariat edits a document and then sends it to UNDOCS for final editing and publishing; the goal is to send clean documents. Nothing is edited after UNDOCS has processed it, so assume that every document you are given is a draft that has not yet been submitted, even if it resembles a published document. That covers Plenary reports, decisions and annexes. Edit whatever you are given, in full. Never refuse, hold back or limit yourself to comments because a text is agreed or adopted, because you recognize it, or because it looks like a scan. In decisions and other adopted text, correct style, spelling, punctuation, terms and format as anywhere else; rule 1 protects the substance. Only the words of a direct quotation stay as they are.
+3. **Voice: policy-relevant, not policy-prescriptive.** In IPBES-authored narrative, present findings and options ("could", "options include"). Do not tell Governments what they "must" or "should" do. Keep such wording when it reports a speaker's view or is the operative text of a decision.
 4. **Never shorten the Platform's name.** The name is always "Intergovernmental Science-Policy Platform on Biodiversity and Ecosystem Services"; never "Intergovernmental Platform on Biodiversity and Ecosystem Services".
 5. **All source documents are in English.** Use British spelling with -ize (UN/Oxford): "organization", "programme", "recognize".
 
@@ -45,38 +45,48 @@ Colleagues usually ask for one of three things: an **analysis** or a **fix** of 
 3. If there is a masthead, check it against `report-structure.md` section 1: logos, spacing, symbol, date and session line.
 4. **Output:** a report grouped by category. For each issue give the location (paragraph number or heading), the issue and the rule ("UN Manual: numbers", "IPBES practice: e.g.,"). Begin with a short summary of the main problems and their counts. **Change nothing.**
 
-### B. Fix: "Fix the document and give me a corrected version to download"
+### B. Fix: "Edit and format this document"
 
-**Never rebuild the document from its text.** That loses the Word styles, numbering, masthead and footnotes, and invites rewording. Correct the original file with tracked changes instead.
+Treat any request to edit, correct, proofread or format a document ("edit and format this", "fix this") as a fix. There are two routes; which one you take depends on what you have been given.
 
-1. Check the document as in A.
-2. Write a **change table** with the columns `No. | Original | Revised | Rule`:
-   - **Original** is the exact text copied from the document. It must be at least six words long (or a whole heading, such as "Introduction.") and unique in the document, and it must stay within one paragraph.
-   - **Revised** is the same text with only the corrections a rule requires.
-   - **Do not** add, drop or reword content, figures, names or meaning.
-   - **Do not** change tense except in Plenary reports, which are in reported speech.
-   - Voice problems ("must", "should") are **queries**, not fixes. So are structural problems: numbering gaps, lone subheadings and text not in the IPBES styles.
-   - Never change agreed text.
-3. If you can run code, apply the table to the original file:
+**The editing rules are the same on both routes:**
+
+- Change only what a rule requires. **Do not** add, drop or reword content, figures, names or meaning.
+- **Do not** change tense except in Plenary reports, which are in reported speech.
+- Voice problems ("must", "should") are **queries**, not fixes. So are structural problems: numbering gaps and lone subheadings.
+- Decisions and annexes are edited like any other text (overriding rule 2).
+- Always give a **change table** with the columns `No. | Original | Revised | Rule`, so the user can see every change. **Original** is the exact text copied from the document, at least six words long (or a whole heading) and unique in the document, within one paragraph. **Revised** is the same text with only the corrections.
+
+**Route 1: your code can open the original .docx file** (tracked changes).
+
+1. Check the document as in A and write the change table.
+2. Save the table as `changes.md` and apply it to the original file:
 
    ```
    python3 scripts/apply_changes.py original.docx changes.md corrected.docx
    ```
 
    Each change becomes a real Word tracked change, with the rule as a comment, and all formatting is kept. The script applies a change only if its original text is found exactly once. It lists anything not found or found more than once: fix those rows and run it again, or report them.
-4. **Output:**
-   - the corrected Word file;
-   - the change table;
-   - a short summary with counts;
-   - **queries for the author**: anything you flagged but did not change.
+3. **Output:** the corrected Word file, the change table, a short summary with counts, and **queries for the author**. Formatting (styles, numbering, tables, layout) is not changed on this route: the user runs **Fix formatting** on the IPBES tab in Word (`IPBES_FixFormatting` macro).
 
-   If you cannot run code, give the change table only. The user can apply it in Word with the `IPBES_ApplyChangeList` macro. Do not offer or promise a revised Word file, and do not ask for the file again.
-5. **Formatting** (styles, headings, numbering, tables, layout) is done in Word by the **Fix formatting** button on the IPBES tab (`IPBES_FixFormatting` macro), which applies the IPBES styles as tracked changes. If you cannot run code and are asked to format or style a document, say so in one sentence, tell the user to run **Fix formatting**, and list any formatting problems as queries.
+**Route 2: you only have the document's extracted text** (as in Copilot). You cannot edit the original, so produce a new, edited document in the IPBES styles. Do not ask for the file again.
+
+1. Rewrite the text as Markdown. Keep **every** heading, paragraph, list item, table and footnote, in the same order: `#` title, `##`/`###`/`####` headings (without their typed numbers), tables as Markdown tables with "Table 1: Title" and the headnote on the lines above, footnotes as `[^1]`. Leave out typed paragraph numbers.
+2. Apply the corrections in that Markdown, following the editing rules above.
+3. Convert it as in C (`scripts/md_to_ipbes_docx.py`, with `--numbered` if the original has numbered paragraphs, `--number-headings` if its headings are numbered, and `--symbol` if it has a document symbol).
+4. **Output:**
+   - the new Word file;
+   - the change table and a short summary with counts;
+   - **queries for the author**;
+   - a note of anything not carried over (masthead, images, page headers, comments);
+   - one sentence telling the user to check the result against the original with **Review → Compare** in Word.
+
+   If the user asks only for a change list, give the table alone; it can be applied in Word with the `IPBES_ApplyChangeList` macro.
 
 ### C. Conversion: "Convert this Markdown draft into a Word document in the IPBES style"
 
 1. Map the Markdown elements to the IPBES Word styles as set out in `report-structure.md` section 7.
-2. If you can run code, use the converter in this skill (`scripts/md_to_ipbes_docx.py`, run from the skill folder):
+2. If you can run code, use the converter in this skill (`scripts/md_to_ipbes_docx.py`, run from the skill folder). **Do not write your own code to build the Word file** (for example with python-docx and its default template): only this script and its template give the IPBES styles, A4 page and margins. If the script fails, show the error message to the user.
 
    ```
    python3 scripts/md_to_ipbes_docx.py input.md output.docx [--numbered] [--symbol IPBES/13/5]

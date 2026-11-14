@@ -63,7 +63,7 @@ To apply a **change table** (see Copilot section below):
 ### IPBES_RemoveIPBESComments
 Deletes only the comments the macros added. Other people's comments are kept.
 
-- **Agreed text** (decisions, approved summaries for policymakers, quotations) must not be changed. Reject any tracked change there, and treat comments there as queries.
+- **Every document is open for editing**, including decisions and annexes: the secretariat edits a document and sends it clean to UNDOCS for final editing and publishing. Nothing is edited after UNDOCS has processed it, so the tools treat every document as a draft for submission. What must not change is the substance (what was decided, figures, names, dates) and the words of direct quotations. Reject any change that alters them.
 - The comments are suggestions, not errors. For example, "should" in reported speech, or "Secretariat" in a budget table, is correct.
 - To keep the document readable, the macros mark at most 25 places per rule. The report shows the full count.
 
@@ -111,16 +111,16 @@ Attach the document, then ask one of three things:
 1. **Analysis:** "Analyse the attached document against the IPBES editorial criteria."
 
    The assistant goes through the whole document and reports where it departs from the house style and formatting requirements, grouped by category. It does not change anything.
-2. **Fixing:** "Fix the attached document to match the IPBES style and formatting requirements."
+2. **Fixing:** "Edit and format the attached document."
 
-   Copilot cannot change formatting: run **Fix formatting** (section 1) first; Copilot handles the wording. It returns a **change table** (No. | Original | Revised | Rule) and a list of queries for the author. It does not return a new file, because a file created by Copilot loses the Word styles and cannot show tracked changes. To apply the table:
-   1. Copy the table from Copilot and paste it into a new Word document.
-   2. Open the document to correct, and run the **IPBES_ApplyChangeList** macro (section 1).
+   Copilot returns a **new Word file**, edited and in the IPBES styles, with a table of every change (No. | Original | Revised | Rule) and a list of queries for the author. Copilot only receives the text of your document, so the new file has no tracked changes, and the masthead, images and page headers are not carried over.
 
-   Each change is made as a tracked change, with the rule as a comment, and the formatting is kept. You then accept or reject each change.
+   To see what changed, open the new file in Word and choose **Review → Compare → Compare…**, with your document as the original and Copilot's file as the revised document.
+
+   If you need tracked changes in your own document instead, ask for "a change list only", paste the table into a new Word document, and run **Apply change list** in your document (section 1).
 3. **Conversion:** "Convert the attached Markdown draft into a Word document in the IPBES style."
 
-   The assistant applies the language rules and returns a Word file, but without the IPBES Word styles. Open the file in Word, press **Fix formatting** on the IPBES tab, then choose **Review → Accept → Accept All Changes**. The file now has the IPBES styles, numbering and layout.
+   The assistant applies the language rules and returns a Word file in the IPBES styles.
 
 **Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or decisions. Report it if it ever does.
 

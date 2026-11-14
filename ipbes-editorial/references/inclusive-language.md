@@ -7,7 +7,7 @@ Sources:
 - **Gender:** UN, *Guidelines for gender-inclusive language in English*, https://www.un.org/en/gender-inclusive-language/guidelines.shtml, and its Toolbox page.
 - **Disability:** UN Department of Global Communications, *Disability-Inclusive Communications Guidelines* (March 2022). Its terminology table (table 1) is taken from the UN Office at Geneva, *Disability-Inclusive Language Guidelines* (2021), https://www.ungeneva.org/sites/default/files/2021-01/Disability-Inclusive-Language-Guidelines.pdf. For the latest terms, check UNTERM (https://unterm.un.org).
 
-**Do not change agreed text.** Do not reword gender or disability language in text agreed by the Plenary (decisions, approved summaries for policymakers) or in direct quotations. Flag it instead.
+**Decisions and other adopted texts are edited like any other text.** Apply these rules there too, as long as the meaning stays the same. Do not reword direct quotations; flag them instead.
 
 ---
 
@@ -127,4 +127,4 @@ These checks come from the 2022 guidelines and WCAG 2.1. They apply to Word docu
 4. Is the language person-first ("persons with disabilities"), with no euphemisms?
 5. Are there terms from the "avoid" column in table 2.2, or ableist metaphors?
 6. Do the images have alt text, and do the figures work without colour?
-7. Does any of this fall in agreed text or a quotation? If so, flag it rather than changing it.
+7. Does any of this fall in a direct quotation? If so, flag it rather than changing it.

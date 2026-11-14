@@ -40,7 +40,7 @@ python3 tools/evidence_scan.py dump/ > evidence_counts.md
 - **UN rule:** the reports are split, or the rival form appears only in older reports.
 - **Current IPBES practice:** practice changed at a clear point and has been stable since. The newer form is used.
 
-The annexes contain agreed text, including decisions, scoping reports and terms of reference. A form that appears only there is noted, but agreed text is never edited (see `house-style.md`, precedence rule 1).
+The annexes contain agreed text, including decisions, scoping reports and terms of reference. A form that appears only there is noted. This describes the evidence only: before submission to UNDOCS, the secretariat edits such texts like any other (see `house-style.md`, "Every document is open for editing").
 
 ---
 
@@ -70,7 +70,7 @@ The annexes contain agreed text, including decisions, scoping reports and terms 
 
 | Item | Counts | Rule applied |
 |---|---|---|
-| "and/or" | 69 in total. Recent reports have it almost only in annexed scoping reports and terms of reference (agreed text). | UN rule: avoid it in narrative. Do not change it in agreed text. |
+| "and/or" | 69 in total. Recent reports have it almost only in annexed scoping reports and terms of reference (agreed text). | UN rule: avoid it. Replace it where the meaning is clear; otherwise query it. |
 | "well-being" against "wellbeing" | 59 against 5. "wellbeing" appears in IPBES-3, 6, 8 and 10, mostly inside titles of other bodies' documents. | UN list: "well-being". |
 | "Secretariat" capitalized | 147 uses, almost all in budget table line items ("3. Secretariat", "3.1 Secretariat personnel") or other bodies' names ("Secretariat of the Pacific Community") | Narrative: "the secretariat" (lower case, 902 uses). Leave budget tables as they are. |
 | Bare "IPBES’" possessive | 11, IPBES-5 only | No possessive on acronyms (UN rule). |

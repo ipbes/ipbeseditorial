@@ -6,11 +6,12 @@ These rules are for English IPBES documents: Plenary reports, pre-session docume
 
 Precedence when sources disagree:
 
-1. Text agreed by the Plenary (decisions, approved summaries for policymakers). Never edit it silently; flag it.
-2. IPBES practice listed here.
-3. UN Editorial Manual: https://www.un.org/dgacm/en/content/editorial-manual
-4. UN spelling list (`un-spelling-list.md`), then the online Oxford Dictionary (British English).
-5. UNTERM (https://unterm.un.org) for names and terms not covered here.
+1. IPBES practice listed here.
+2. UN Editorial Manual: https://www.un.org/dgacm/en/content/editorial-manual
+3. UN spelling list (`un-spelling-list.md`), then the online Oxford Dictionary (British English).
+4. UNTERM (https://unterm.un.org) for names and terms not covered here.
+
+**Every document is open for editing.** The secretariat edits a document and then sends it to UNDOCS for final editing and publishing. The goal is to send clean documents. Nothing is edited after UNDOCS has processed it, so treat every document as a draft that has not yet been submitted. That includes Plenary reports, decisions and annexes. Apply the rules for style, spelling, punctuation, terms and format to the whole document. Do not hold back because a text has been agreed or adopted. What does not change is the substance: what was said, decided, requested or approved, and every figure, name, date and symbol.
 
 ---
 
@@ -21,7 +22,7 @@ IPBES is **policy-relevant but not policy-prescriptive**. This is the rule that 
 - **Present evidence, options and findings. Do not tell Governments or other actors what they must do.** Prefer "options include", "could", "may", "the assessment found that". Avoid "must", "should", "need to" and "it is essential that" in IPBES-authored narrative.
 - **Keep prescriptive wording where it belongs:**
   - Quote or report it when it is a speaker's view: "the representative said that Governments should…".
-  - Keep the agreed operative text of decisions: "*Requests* the Executive Secretary…".
+  - Keep it in the operative text of decisions, where it is the substance: "*Requests* the Executive Secretary…".
 - **Be neutral, factual and measured.** No advocacy, no slogans, no superlatives such as "groundbreaking" or "unprecedented", unless the speaker used them.
 - **Represent views in a balanced way.**
   - Attribute a view to the speaker or group that expressed it: "one representative", "several representatives", "the representative of X, speaking on behalf of the Group of African States".

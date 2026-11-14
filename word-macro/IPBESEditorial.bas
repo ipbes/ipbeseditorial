@@ -31,8 +31,9 @@ Attribute VB_Name = "IPBESEditorial"
 '
 ' Rules: ipbes-editorial/references/house-style.md (UN Editorial Manual
 ' plus IPBES practice from the Plenary reports IPBES-1 to IPBES-12).
-' Agreed text (decisions, approved summaries for policymakers, quotations) must
-' not be changed: reject tracked changes there and treat comments as queries.
+' Every document is a draft to be sent clean to UNDOCS, and is open for editing,
+' including decisions and annexes. Reject only changes that alter the substance
+' (what was decided, figures, names, dates) or the words of a direct quotation.
 '
 ' This file is plain ASCII on purpose: non-ASCII characters are built with
 ' ChrW() so that the VBA editor imports them correctly.
@@ -142,7 +143,7 @@ Private Sub BuildRules()
     AddRule "Abbreviations", "i.e. ", False, True, False, _
         "IPBES practice: 'i.e.,' with a comma, inside parentheses only; in running text write 'that is'.", "i.e., ", True
     AddRule "Abbreviations", "and/or", False, False, False, _
-        "Avoid 'and/or': use 'and' or 'or' (keep it in agreed text)."
+        "Avoid 'and/or': use 'and' or 'or'."
     AddRule "Abbreviations", "US$", False, True, False, _
         "Write '$' for United States dollars (e.g., $200,000), not 'US$'."
     AddRule "Abbreviations", "USD", False, True, True, _
@@ -359,7 +360,7 @@ Public Sub IPBES_CheckVoice()
         r.MatchCase = False
         r.WholeWord = True
         r.Message = "Voice: IPBES is policy-relevant, not policy-prescriptive. In IPBES-authored narrative prefer " & _
-                    "'could', 'options include', 'the assessment found that'. Keep if reporting a speaker or in agreed text."
+                    "'could', 'options include', 'the assessment found that'. Keep if reporting a speaker or in the operative text of a decision."
         sample = ""
         n = MarkRule(ActiveDocument, r, sample)
         If n > 0 Then
@@ -380,7 +381,7 @@ Public Sub IPBES_SafeFixes()
               "Track Changes will be switched on, so every change can be reviewed." & vbCr & _
               "Fixes: Platform name, e.g./i.e. comma, -ize spelling, dashes, double spaces," & vbCr & _
               "curly quotes, country names and a few terms." & vbCr & vbCr & _
-              "Reject any change inside agreed text (decisions, quotations)." & vbCr & vbCr & _
+              "Reject any change that alters the substance or a direct quotation." & vbCr & vbCr & _
               "Continue?", vbYesNo + vbQuestion, "IPBES") <> vbYes Then Exit Sub
 
     oldTrack = doc.TrackRevisions
@@ -425,7 +426,7 @@ Public Sub IPBES_SafeFixes()
     SetTracking doc, oldTrack
     Application.ScreenUpdating = True
     msg = total & " change(s) made with Track Changes." & vbCr & _
-          "Review them (Review > Next) and reject any inside agreed text."
+          "Review them (Review > Next) and reject any that alter the substance or a direct quotation."
     MsgBox msg, vbInformation, "IPBES"
 End Sub
 
@@ -1712,10 +1713,7 @@ Private Function FindSymbol(ByVal doc As Document) As String
 End Function
 
 ' Shrinks a table proportionally if, after the 2.2 cm indent, it is wider than the text column.
-' With rewrite = True the widths are written back even when they fit: files made by
-' other tools (such as Copilot) can store cell widths that differ from the column grid
-' Word actually draws, and writing the widths makes Word rebuild the grid from them.
-Private Sub FitTableToText(ByVal t As Table, Optional ByVal rewrite As Boolean = False)
+Private Sub FitTableToText(ByVal t As Table)
     Dim avail As Single, c As Cell, widths() As Single, maxW As Single, r As Long, f As Single
     On Error Resume Next
     With t.Range.Sections(1).PageSetup
@@ -1729,13 +1727,9 @@ Private Sub FitTableToText(ByVal t As Table, Optional ByVal rewrite As Boolean =
     For r = 1 To UBound(widths)
         If widths(r) > maxW Then maxW = widths(r)
     Next r
-    If maxW <= 0 Then Exit Sub
-    If maxW <= avail + 1 And Not rewrite Then Exit Sub
-    f = 1
-    If maxW > avail + 1 Then f = avail / maxW
+    If maxW <= avail + 1 Or maxW <= 0 Then Exit Sub
+    f = avail / maxW
     t.AllowAutoFit = False
-    t.PreferredWidthType = wdPreferredWidthPoints
-    t.PreferredWidth = maxW * f
     For Each c In t.Range.Cells
         c.Width = c.Width * f
     Next c
@@ -1748,7 +1742,7 @@ Private Sub FormatTable(ByVal doc As Document, ByVal t As Table)
     Dim c As Cell, txt As String, last As Long
     On Error Resume Next
     t.Rows.LeftIndent = CentimetersToPoints(2.2)
-    FitTableToText t, True
+    FitTableToText t
     ' whole-table operations (one change each, instead of one per cell)
     t.Borders.Enable = False
     t.Shading.BackgroundPatternColor = wdColorAutomatic
@@ -2383,7 +2377,7 @@ Private Sub WriteReport(ByVal src As Document, ByVal total As Long, ByVal title 
         Format(Now, "d mmmm yyyy, h.nn") & vbCr & _
         total & " item(s) found." & IIf(total > 0, " Comments starting " & TAG & "were added to the document " & _
         "(at most " & MAX_COMMENTS_PER_RULE & " per rule). Remove them with IPBES_RemoveIPBESComments.", "") & vbCr & _
-        "Do not change agreed text (decisions, approved summaries for policymakers, quotations): treat issues there as queries." & vbCr
+        "The whole document is open for editing, including decisions and annexes. Do not change the substance or the words of direct quotations." & vbCr
     rep.Paragraphs(1).Range.Font.Bold = True
     rep.Paragraphs(1).Range.Font.Size = 14
     If ReportLines.Count = 0 Then Exit Sub
