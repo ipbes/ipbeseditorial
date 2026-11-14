@@ -7,17 +7,17 @@ Attribute VB_Name = "IPBESEditorial"
 '                            starting "[IPBES]" and opens a summary report.
 '                            Checks the masthead (if any) and heading numbering.
 '                            Does NOT change the text.
-'   IPBES_SafeFixes          Applies a small set of safe corrections with
-'                            Track Changes switched on, so every change can be
-'                            reviewed, accepted or rejected.
+'   IPBES_SafeFixes          Applies every rule that has a standard correction,
+'                            with Track Changes switched on, so every change can
+'                            be reviewed, accepted or rejected.
 '   IPBES_CheckVoice         Marks prescriptive wording ("must", "should"...)
 '                            for review. Separate because reports legitimately
 '                            report speakers' views.
 '   IPBES_FixFormatting      Applies the IPBES layout: IPBES Word styles (copied
 '                            from the add-in), A4 page set-up, headings
 '                            (Heading 1-4 -> CH1-CH4), body paragraphs
-'                            (numbered or not), table captions and table
-'                            layout. Style and text changes are tracked.
+'                            (numbered or not), double spaces, table captions
+'                            and table layout. Style and text changes are tracked.
 '   IPBES_ApplyChangeList    Applies a change list from Copilot or Claude (a
 '                            table with columns "Original" and "Revised") to the
 '                            active document as tracked changes, keeping all
@@ -97,9 +97,16 @@ Private Sub AddRule(ByVal cat As String, ByVal findText As String, ByVal wild As
 End Sub
 
 Private Sub BuildRules()
-    Dim stems As Variant, endings As Variant, s As Variant, e As Variant
+    Dim stems As Variant, endings As Variant, s As Variant, e As Variant, w As Variant
+    Dim i As Long, yr As Long, nd As String, dash As Variant, sfx As String
     RuleCount = 0
     Erase Rules
+    yr = Year(Date)
+
+    ' Every rule with a replacement is applied by IPBES_SafeFixes as a tracked change.
+    ' Defaults follow the guidance; the reviewer rejects the exceptions (quotations,
+    ' published titles, computer programs, court judgments, other bodies' names).
+    ' Rules run in the order listed: specific forms come before general ones.
 
     ' --- Platform name -----------------------------------------------------
     AddRule "Platform name", "Intergovernmental Platform on Biodiversity and Ecosystem Services", False, False, False, _
@@ -109,11 +116,17 @@ Private Sub BuildRules()
     AddRule "Platform name", "Science-policy Platform", False, True, False, _
         "Capitalize: Science-Policy Platform.", "Science-Policy Platform", True
     AddRule "Platform name", "Intergovernmental science-policy platform", False, True, False, _
-        "The Platform's name is capitalized: " & FullName() & "."
-    AddRule "Platform name", "IPBES's", False, True, False, _
-        "No possessive on acronyms: 'the IPBES secretariat', 'the mandate of IPBES'."
-    AddRule "Platform name", "IPBES' ", False, True, False, _
-        "No possessive on acronyms: 'the IPBES secretariat', 'the mandate of IPBES'."
+        "The Platform's name is capitalized: " & FullName() & ".", "Intergovernmental Science-Policy Platform", True
+    AddRule "Platform name", "Science-Policy Platform on biodiversity and ecosystem services", False, True, False, _
+        "The Platform's name is capitalized: " & FullName() & ".", "Science-Policy Platform on Biodiversity and Ecosystem Services", True
+    For Each s In Array("IPBES's", "IPBES" & RSQuo() & "s")
+        AddRule "Platform name", s, False, True, False, _
+            "No possessive on acronyms: 'the IPBES secretariat', 'the mandate of IPBES'.", "IPBES", True
+    Next s
+    For Each s In Array("IPBES' ", "IPBES" & RSQuo() & " ")
+        AddRule "Platform name", s, False, True, False, _
+            "No possessive on acronyms: 'the IPBES secretariat', 'the mandate of IPBES'.", "IPBES ", True
+    Next s
 
     ' --- Internal codes and abbreviations not used in documents --------------
     AddCode "BBA", "business and biodiversity assessment"
@@ -134,52 +147,140 @@ Private Sub BuildRules()
     AddCode "ILK", "Indigenous and local knowledge"
     AddCode "IPLC", "Indigenous Peoples and local communities"
     AddCode "IPLCs", "Indigenous Peoples and local communities"
-    AddCode "MEP", "Multidisciplinary Expert Panel (the Panel)"
+    AddCode "MEP", "Multidisciplinary Expert Panel"
     AddCode "TSU", "technical support unit"
 
-    ' --- Abbreviations -------------------------------------------------------
+    ' --- Abbreviations, titles and honorifics ---------------------------------
     AddRule "Abbreviations", "e.g. ", False, True, False, _
         "IPBES practice: 'e.g.,' with a comma, inside parentheses only; in running text write 'for example'.", "e.g., ", True
     AddRule "Abbreviations", "i.e. ", False, True, False, _
         "IPBES practice: 'i.e.,' with a comma, inside parentheses only; in running text write 'that is'.", "i.e., ", True
     AddRule "Abbreviations", "and/or", False, False, False, _
         "Avoid 'and/or': use 'and' or 'or'."
-    AddRule "Abbreviations", "US$", False, True, False, _
-        "Write '$' for United States dollars (e.g., $200,000), not 'US$'."
-    AddRule "Abbreviations", "USD", False, True, True, _
-        "Write '$' for United States dollars, not 'USD'."
-    AddRule "Abbreviations", "H.E.", False, True, False, "No honorifics such as 'H.E.'."
+    AddRule "Abbreviations", "US$ ", False, True, False, "Write '$200,000', not 'US$ 200,000'.", "$", True
+    AddRule "Abbreviations", "US$", False, True, False, "Write '$200,000', not 'US$200,000'.", "$", True
+    AddRule "Abbreviations", "<USD ([0-9])", True, True, False, "Write '$200,000', not 'USD 200,000'.", "$\1", True
+    AddRule "Abbreviations", "<USD([0-9])", True, True, False, "Write '$200,000', not 'USD200,000'.", "$\1", True
+    AddRule "Abbreviations", "<([0-9][0-9,.]@) USD>", True, True, False, "Write '$200,000', not '200,000 USD'.", "$\1", True
+    AddRule "Abbreviations", "USD", False, True, True, "Write '$' for United States dollars, not 'USD'."
+    AddRule "Abbreviations", "US dollars", False, True, False, "Write 'United States dollars'.", "United States dollars", True
+    AddRule "Abbreviations", "H.E. ", False, True, False, "No honorifics such as 'H.E.'.", "", True
+    AddRule "Abbreviations", "His Excellency ", False, False, False, "No honorifics such as 'His Excellency'.", "", True
+    AddRule "Abbreviations", "Her Excellency ", False, False, False, "No honorifics such as 'Her Excellency'.", "", True
     AddRule "Abbreviations", "Excellency", False, False, True, "No honorifics such as 'His/Her Excellency'."
     AddRule "Abbreviations", "Dr. ", False, True, False, _
-        "Use 'Ms.' or 'Mr.' (or the full name at first mention), not 'Dr.'."
-    AddRule "Abbreviations", "Mrs.", False, True, False, "Use 'Ms.' unless the person prefers 'Mrs.'."
-    AddRule "Abbreviations", "U.N.", False, True, False, "Write 'United Nations' (no abbreviation in running text)."
+        "No 'Dr.': full name at first mention, then 'Ms.' or 'Mr.' and the surname.", "", True
+    AddRule "Abbreviations", "<Dr ([A-Z])", True, True, False, _
+        "No 'Dr': full name at first mention, then 'Ms.' or 'Mr.' and the surname.", "\1", True
+    AddRule "Abbreviations", "Mrs. ", False, True, False, "Use 'Ms.' unless the person prefers 'Mrs.'.", "Ms. ", True
+    AddRule "Abbreviations", "<Mrs ([A-Z])", True, True, False, "Use 'Ms.' unless the person prefers 'Mrs.'.", "Ms. \1", True
+    AddRule "Abbreviations", "<(M[rs]) ([A-Z])", True, True, False, "'Ms.' and 'Mr.' take a full stop.", "\1. \2", True
+    AddRule "Abbreviations", "U.N.", False, True, False, "Write 'United Nations' (no abbreviation in running text).", "United Nations", True
 
     ' --- Numbers, dates and time --------------------------------------------
-    AddRule "Numbers", "[0-9]%", True, False, False, _
-        "Write 'per cent' in running text; '%' only in table headnotes."
+    AddRule "Numbers", "([0-9]) %", True, False, False, _
+        "Write 'per cent' in running text; '%' only in table headnotes.", "\1 per cent", True
+    AddRule "Numbers", "([0-9])%", True, False, False, _
+        "Write 'per cent' in running text; '%' only in table headnotes.", "\1 per cent", True
     AddRule "Numbers", "percent", False, False, True, "Write 'per cent' (two words).", "per cent", True
+    ' times: 10.00 a.m. -> 10 a.m.; 10:15 a.m. -> 10.15 a.m.; 10am -> 10 a.m.
+    AddRule "Numbers", "<([0-9]{1,2})[:.]00 ([ap].m.)", True, True, False, _
+        "Time format: '10 a.m.', not '10.00 a.m.'.", "\1 \2", True
+    AddRule "Numbers", "<([0-9]{1,2}):([0-9]{2}) ([ap].m.)", True, True, False, _
+        "Time format: '10.15 a.m.', not '10:15 a.m.'.", "\1.\2 \3", True
+    AddRule "Numbers", "<([0-9]{1,2}) ([ap])m>", True, True, False, "Time format: '10 a.m.'.", "\1 \2.m.", True
+    AddRule "Numbers", "<([0-9]{1,2})([ap])m>", True, True, False, "Time format: '10 a.m.'.", "\1 \2.m.", True
     AddRule "Numbers", "<[0-9]{1,2}:[0-9]{2}>", True, False, False, _
         "Time format: '10.15 a.m.', '3 p.m.', not '10:15'."
-    AddRule "Numbers", "<[0-9]{1,2}.00 [ap].m.", True, False, False, _
-        "Time format: '10 a.m.', not '10.00 a.m.'."
-    AddRule "Numbers", "<[0-9]{1,2}-[0-9]{1,2} [JFMASOND][a-z]@ [0-9]{4}", True, True, False, _
-        "Date range: 'from 3 to 8 February 2026' in text, '3" & EnDash() & "8 February 2026' in mastheads (en dash, not hyphen)."
+    ' ranges
+    For Each dash In Array("-", EnDash())
+        AddRule "Numbers", "<([Ff]rom) ([0-9]{4})" & dash & "([0-9]{4})>", True, True, False, _
+            "Range: 'from 2024 to 2026', not 'from 2024" & EnDash() & "2026'.", "\1 \2 to \3", True
+        AddRule "Numbers", "<([Bb]etween) ([0-9.,]@)" & dash & "([0-9.,]@)>", True, True, False, _
+            "Range: 'between 10 and 15'.", "\1 \2 and \3", True
+    Next dash
+    AddRule "Numbers", "<([0-9]{4})-([0-9]{4})>", True, True, False, _
+        "Year range: en dash, '2025" & EnDash() & "2026'.", "\1" & EnDash() & "\2", True
+    AddRule "Numbers", "<([0-9.,]@)-([0-9.,]@) per cent", True, True, False, _
+        "Range: en dash, '12" & EnDash() & "14 per cent'.", "\1" & EnDash() & "\2 per cent", True
+    For Each s In Array("pp.", "paras.")
+        AddRule "Numbers", "<(" & s & ") ([0-9]@)-([0-9]@)>", True, True, False, _
+            "Range: en dash, '" & s & " 17" & EnDash() & "19'.", "\1 \2" & EnDash() & "\3", True
+    Next s
+    ' dates, one set per month (Word wildcards cannot list alternatives).
+    ' Order matters: ordinals first, then hyphenated ranges, then repeated months, so
+    ' "from 3rd March to 5th March" -> "from 3 March to 5 March" -> "from 3 to 5 March".
+    For Each s In Array("January", "February", "March", "April", "May", "June", "July", _
+                        "August", "September", "October", "November", "December")
+        AddRule "Numbers", "<([0-9]{1,2})[snrt][tdh] of " & s & ">", True, True, False, _
+            "No ordinals in dates: '3 " & s & "', not '3rd of " & s & "'.", "\1 " & s, True
+        AddRule "Numbers", "<([0-9]{1,2})[snrt][tdh] " & s & ">", True, True, False, _
+            "No ordinals in dates: '3 " & s & "', not '3rd " & s & "'.", "\1 " & s, True
+        AddRule "Numbers", "<" & s & " ([0-9]{1,2})[snrt][tdh]>", True, True, False, _
+            "Day before month, no ordinal: '3 " & s & "'.", "\1 " & s, True
+        AddRule "Numbers", "<" & s & " ([0-9]{1,2}), ([0-9]{4})>", True, True, False, _
+            "Date format: '12 " & s & " 2026' (day month year, no comma).", "\1 " & s & " \2", True
+        For Each dash In Array("-", EnDash())
+            AddRule "Numbers", "<([Ff]rom) ([0-9]{1,2})" & dash & "([0-9]{1,2}) " & s & ">", True, True, False, _
+                "Date range in text: 'from 3 to 8 " & s & "'.", "\1 \2 to \3 " & s, True
+            AddRule "Numbers", "<([Bb]etween) ([0-9]{1,2})" & dash & "([0-9]{1,2}) " & s & ">", True, True, False, _
+                "Date range in text: 'between 3 and 8 " & s & "'.", "\1 \2 and \3 " & s, True
+            AddRule "Numbers", "<on ([0-9]{1,2})" & dash & "([0-9]{1,2}) " & s & ">", True, True, False, _
+                "Date range in text: 'from 3 to 8 " & s & "'.", "from \1 to \2 " & s, True
+        Next dash
+        ' a hyphen is never right; an en dash is right in the masthead, so it is left alone
+        AddRule "Numbers", "<([0-9]{1,2})-([0-9]{1,2}) " & s & ">", True, True, False, _
+            "Date range in text: 'from 3 to 8 " & s & "' (masthead: '3" & EnDash() & "8 " & s & "').", "from \1 to \2 " & s, True
+        AddRule "Numbers", "<([Ff]rom) ([0-9]{1,2}) " & s & " to ([0-9]{1,2}) " & s & ">", True, True, False, _
+            "Date range: 'from 3 to 5 " & s & "' (month once).", "\1 \2 to \3 " & s, True
+        AddRule "Numbers", "<([Bb]etween) ([0-9]{1,2}) " & s & " and ([0-9]{1,2}) " & s & ">", True, True, False, _
+            "Date range: 'between 3 and 5 " & s & "' (month once).", "\1 \2 and \3 " & s, True
+    Next s
     AddRule "Numbers", "<[JFMASOND][a-z]@ [0-9]{1,2}, [0-9]{4}", True, True, False, _
         "Date format: '12 February 2026' (day month year, no comma)."
-    AddRule "Numbers", "this year", False, False, False, "Give the year rather than 'this year'."
-    AddRule "Numbers", "next year", False, False, False, "Give the year rather than 'next year'."
-    AddRule "Numbers", "last year", False, False, False, "Give the year rather than 'last year'."
+    ' relative years -> the year (taken from today's date; check older documents)
+    For Each s In Array("this|0", "next|1", "last|-1")
+        w = Split(s, "|")
+        nd = CStr(yr + CLng(w(1)))
+        If w(0) = "next" Then AddRule "Numbers", "the next year", False, False, False, _
+            "'the next year' -> 'the coming year'.", "the coming year", True
+        If w(0) = "last" Then AddRule "Numbers", "the last year", False, False, False, _
+            "'the last year' -> 'the past year'.", "the past year", True
+        AddRule "Numbers", w(0) & " year's", False, False, False, "Give the year: 'the " & nd & "'.", "the " & nd, True
+        AddRule "Numbers", w(0) & " year" & RSQuo() & "s", False, False, False, "Give the year: 'the " & nd & "'.", "the " & nd, True
+        AddRule "Numbers", "of " & w(0) & " year", False, False, False, "Give the year: 'of " & nd & "'.", "of " & nd, True
+        AddRule "Numbers", "in " & w(0) & " year", False, False, False, "Give the year: 'in " & nd & "'.", "in " & nd, True
+        AddRule "Numbers", w(0) & " year", False, False, True, "Give the year: 'in " & nd & "'.", "in " & nd, True
+    Next s
+    ' ordinals in words: sessions and centuries
+    w = Array("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", _
+              "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", _
+              "eighteenth", "nineteenth", "twentieth")
+    For i = 1 To 20
+        sfx = "th"
+        If i = 1 Then sfx = "st"
+        If i = 2 Then sfx = "nd"
+        If i = 3 Then sfx = "rd"
+        AddRule "Numbers", "<" & i & sfx & " ([Ss])ession>", True, True, False, _
+            "Ordinals in words: '" & w(i - 1) & " session'.", w(i - 1) & " \1ession", True
+    Next i
+    AddRule "Numbers", "<19th century>", True, True, False, "Centuries in words.", "nineteenth century", True
+    AddRule "Numbers", "<20th century>", True, True, False, "Centuries in words.", "twentieth century", True
+    AddRule "Numbers", "<21st century>", True, True, False, "Centuries in words.", "twenty-first century", True
+    AddRule "Numbers", "<22nd century>", True, True, False, "Centuries in words.", "twenty-second century", True
+    ' "paragraph 6(a)" -> "paragraph 6 (a)"
+    AddRule "Numbers", "([0-9])\(([a-z]{1,4})\)", True, True, False, _
+        "Space before the subparagraph letter: 'paragraph 6 (a)', 'deliverable 1 (a)'.", "\1 (\2)", True
 
     ' --- Punctuation ---------------------------------------------------------
     AddRule "Punctuation", " " & EmDash() & " ", False, False, False, _
         "Use a spaced en dash for an aside, never an em dash.", " " & EnDash() & " ", True
     AddRule "Punctuation", EmDash(), False, False, False, _
-        "Use an en dash, never an em dash."
+        "Use a spaced en dash for an aside, never an em dash.", " " & EnDash() & " ", True
     AddRule "Punctuation", " - ", False, False, False, _
         "Use a spaced en dash for an aside, not a hyphen.", " " & EnDash() & " ", True
     AddRule "Punctuation", "  ", False, False, False, "Double space.", " ", True
-    AddRule "Punctuation", " [;:\?\!]", True, False, False, "No space before ; : ? !"
+    AddRule "Punctuation", " ([;:\?\!])", True, False, False, "No space before ; : ? !", "\1", True
     AddRule "Punctuation", Chr(34), True, False, False, _
         "Use curly quotation marks (IPBES_SafeFixes converts them)."
     AddRule "Punctuation", Chr(39), True, False, False, _
@@ -198,43 +299,55 @@ Private Sub BuildRules()
                 Left(s, Len(s) - 1) & "z" & e, True
         Next e
     Next s
-    AddRule "Spelling", "whilst", False, False, True, "Write 'while'.", "while", True
-    AddRule "Spelling", "amongst", False, False, True, "Write 'among'.", "among", True
-    AddRule "Spelling", "program", False, False, True, _
-        "Write 'programme' (except a computer program)."
-    AddRule "Spelling", "programs", False, False, True, _
-        "Write 'programmes' (except computer programs)."
-    AddRule "Spelling", "wellbeing", False, False, True, "Write 'well-being'.", "well-being", True
-    AddRule "Spelling", "policy makers", False, False, False, "Write 'policymakers'.", "policymakers", True
-    AddRule "Spelling", "policy-makers", False, False, False, "Write 'policymakers'.", "policymakers", True
-    AddRule "Spelling", "decision-makers", False, False, False, _
-        "Noun: 'decision makers' (open); adjective: 'decision-making'.", "decision makers", True
-    AddRule "Spelling", "inter-sessional", False, False, False, "Write 'intersessional'.", "intersessional", True
-    AddRule "Spelling", "sub-regional", False, False, False, "Write 'subregional'.", "subregional", True
-    AddRule "Spelling", "sub-region", False, False, True, "Write 'subregion'.", "subregion", True
-    AddRule "Spelling", "co-operation", False, False, False, "Write 'cooperation'.", "cooperation", True
-    AddRule "Spelling", "e-mail", False, False, False, "Write 'email'.", "email", True
-    AddRule "Spelling", "on-line", False, False, False, "Write 'online'.", "online", True
-    AddRule "Spelling", "nongovernmental", False, False, False, "Write 'non-governmental'.", "non-governmental", True
-    AddRule "Spelling", "capacity building", False, False, False, _
-        "Write 'capacity-building' (noun and adjective).", "capacity-building", True
-    AddRule "Spelling", "judgment", False, False, True, _
-        "Write 'judgement' (general sense); 'judgment' only for court decisions."
+    ' pairs: wrong form, UN form (whole word; Word keeps an initial capital)
+    w = Array("whilst", "while", "amongst", "among", "program", "programme", "programs", "programmes", _
+              "judgment", "judgement", "judgments", "judgements", "acknowledgment", "acknowledgement", _
+              "acknowledgments", "acknowledgements", "wellbeing", "well-being", "policy makers", "policymakers", _
+              "policy-makers", "policymakers", "policy maker", "policymaker", "policy-maker", "policymaker", _
+              "policy making", "policymaking", "policy-making", "policymaking", "decision-makers", "decision makers", _
+              "decision-maker", "decision maker", "inter-sessional", "intersessional", "sub-regional", "subregional", _
+              "sub-region", "subregion", "sub-regions", "subregions", "co-operation", "cooperation", _
+              "co-ordination", "coordination", "co-ordinate", "coordinate", "e-mail", "email", "e-mails", "emails", _
+              "on-line", "online", "nongovernmental", "non-governmental", "capacity building", "capacity-building", _
+              "data base", "database", "data bases", "databases", "dataset", "data set", "datasets", "data sets", _
+              "ground water", "groundwater", "web site", "website", "web sites", "websites", "web-site", "website", _
+              "multi-disciplinary", "multidisciplinary", "multi-lateral", "multilateral", _
+              "multistakeholder", "multi-stakeholder", "advisor", "adviser", "advisors", "advisers", _
+              "color", "colour", "colors", "colours", "behavior", "behaviour", "behaviors", "behaviours", _
+              "behavioral", "behavioural", "labor", "labour", "favor", "favour", "favorable", "favourable", _
+              "honor", "honour", "neighbor", "neighbour", "neighboring", "neighbouring", "center", "centre", _
+              "centers", "centres", "fiber", "fibre", "liter", "litre", "liters", "litres", "defense", "defence", _
+              "offense", "offence", "analyze", "analyse", "analyzed", "analysed", "analyzes", "analyses", _
+              "analyzing", "analysing", "catalyze", "catalyse", "catalyzed", "catalysed", "catalyzing", "catalysing", _
+              "aging", "ageing", "toward", "towards", "fulfill", "fulfil", "fulfillment", "fulfilment", _
+              "enrollment", "enrolment", "modeling", "modelling", "modeled", "modelled", "traveling", "travelling", _
+              "traveled", "travelled", "labeled", "labelled", "labeling", "labelling", "canceled", "cancelled", _
+              "gray", "grey")
+    For i = 0 To UBound(w) Step 2
+        AddRule "Spelling", w(i), False, False, True, "Write '" & w(i + 1) & "'.", w(i + 1), True
+    Next i
+    AddRule "Spelling", "internet", False, True, True, "Capitalize 'Internet'.", "Internet", True
 
     ' --- Capitalization and terms --------------------------------------------
     AddRule "Terms", "Summary for Policymakers", False, True, False, _
-        "Lower case in running text: 'summary for policymakers' (capitals only in a published title)."
+        "Lower case in running text: 'summary for policymakers' (capitals only in a published title).", "summary for policymakers", True
     AddRule "Terms", "Summaries for Policymakers", False, True, False, _
-        "Lower case: 'summaries for policymakers'."
-    AddRule "Terms", "Work Programme", False, True, False, "Lower case: 'work programme'."
-    AddRule "Terms", "Task Force", False, True, False, "Lower case: 'task force'."
-    AddRule "Terms", "Technical Support Unit", False, True, False, "Lower case: 'technical support unit'."
+        "Lower case: 'summaries for policymakers'.", "summaries for policymakers", True
+    AddRule "Terms", "Work Programme", False, True, False, "Lower case: 'work programme'.", "work programme", True
+    AddRule "Terms", "Task Force", False, True, False, "Lower case: 'task force'.", "task force", True
+    AddRule "Terms", "Technical Support Unit", False, True, False, _
+        "Lower case: 'technical support unit'.", "technical support unit", True
+    AddRule "Terms", "Trust Fund", False, True, False, "Lower case: 'trust fund'.", "trust fund", True
     AddRule "Terms", "Contributions to People", False, True, False, _
-        "Lower case: 'nature" & RSQuo() & "s contributions to people'."
+        "Lower case: 'nature" & RSQuo() & "s contributions to people'.", "contributions to people", True
+    AddRule "Terms", "Scoping Report", False, True, False, "Lower case: 'scoping report'.", "scoping report", True
+    AddRule "Terms", "Conceptual Framework", False, True, False, "Lower case: 'conceptual framework'.", "conceptual framework", True
+    AddRule "Terms", "Kunming Montreal", False, True, False, "Write 'Kunming-Montreal'.", "Kunming-Montreal", True
+    AddRule "Terms", "2050 vision", False, True, False, "Write '2050 Vision for Biodiversity'.", "2050 Vision", True
+    AddRule "Terms", "Secretariat", False, True, True, _
+        "Lower case 'the secretariat' (capital only for the United Nations Secretariat or another body's name).", "secretariat", True
     AddRule "Terms", "the plenary", False, True, False, _
         "IPBES practice: 'the Plenary' (capitalized) for the governing body."
-    AddRule "Terms", "Secretariat", False, True, True, _
-        "Lower case 'the secretariat' (capital only for the United Nations Secretariat or another body's name)."
     AddRule "Terms", "Member States", False, True, False, _
         "IPBES has 'members' (IPBES members, members of the Platform); 'Member States' means States Members of the United Nations."
     AddRule "Terms", "indigenous peoples", False, True, False, _
@@ -257,55 +370,85 @@ Private Sub BuildRules()
     AddRule "Countries", "Cape Verde", False, True, False, "UN name: Cabo Verde.", "Cabo Verde", True
     AddRule "Countries", "Ivory Coast", False, True, False, "UN name: C" & ChrW(244) & "te d" & RSQuo() & "Ivoire.", _
         "C" & ChrW(244) & "te d" & RSQuo() & "Ivoire", True
-    AddRule "Countries", "South Korea", False, True, False, "UN name: Republic of Korea."
-    AddRule "Countries", "North Korea", False, True, False, "UN name: Democratic People" & RSQuo() & "s Republic of Korea."
-    AddRule "Countries", "Russia", False, True, True, "UN name: Russian Federation."
-    AddRule "Countries", "Syria", False, True, True, "UN name: Syrian Arab Republic."
-    AddRule "Countries", "Laos", False, True, True, "UN name: Lao People" & RSQuo() & "s Democratic Republic."
-    AddRule "Countries", "Holland", False, True, True, "UN name: Netherlands (Kingdom of the)."
+    AddRule "Countries", "South Korea", False, True, False, "UN name: Republic of Korea.", "Republic of Korea", True
+    AddRule "Countries", "North Korea", False, True, False, "UN name: Democratic People" & RSQuo() & "s Republic of Korea.", _
+        "Democratic People" & RSQuo() & "s Republic of Korea", True
+    AddRule "Countries", "Russia", False, True, True, "UN name: Russian Federation.", "Russian Federation", True
+    AddRule "Countries", "Syria", False, True, True, "UN name: Syrian Arab Republic.", "Syrian Arab Republic", True
+    AddRule "Countries", "Laos", False, True, True, "UN name: Lao People" & RSQuo() & "s Democratic Republic.", _
+        "Lao People" & RSQuo() & "s Democratic Republic", True
+    AddRule "Countries", "Holland", False, True, True, "UN name: Netherlands (Kingdom of the).", "Netherlands (Kingdom of the)", True
+    ' "North Macedonia" is skipped: the character before the space must not be the "h" of "North"
+    AddRule "Countries", "([!h]) Macedonia>", True, True, False, "UN name: North Macedonia.", "\1 North Macedonia", True
     AddRule "Countries", "UK", False, True, True, _
-        "Write 'United Kingdom of Great Britain and Northern Ireland' at first mention, then 'United Kingdom'."
+        "Write 'United Kingdom' ('United Kingdom of Great Britain and Northern Ireland' at first mention).", "United Kingdom", True
     AddRule "Countries", "USA", False, True, True, _
-        "Write 'United States of America' at first mention, then 'United States'."
-    AddRule "Countries", "U.S.", False, True, False, "Write 'United States'."
-    AddRule "Countries", "Macedonia", False, True, True, "UN name: North Macedonia (check context)."
+        "Write 'United States' ('United States of America' at first mention).", "United States", True
+    AddRule "Countries", "U.S.A.", False, True, False, _
+        "Write 'United States' ('United States of America' at first mention).", "United States", True
+    AddRule "Countries", "U.S.", False, True, False, "Write 'United States'.", "United States", True
 
     ' --- Inclusive language --------------------------------------------------
-    AddRule "Inclusive language", "Chairman", False, False, True, "Use 'Chair'."
-    AddRule "Inclusive language", "Chairperson", False, False, True, "IPBES uses 'Chair'."
-    AddRule "Inclusive language", "Chairwoman", False, False, True, "Use 'Chair'."
+    ' Case-sensitive pairs so the replacement keeps the capital (or not).
+    For Each s In Array("Chairman", "Chairwoman", "Chairperson")
+        AddRule "Inclusive language", s, False, True, True, "IPBES uses 'Chair'.", "Chair", True
+        AddRule "Inclusive language", LCase(s), False, True, True, "IPBES uses 'chair'.", "chair", True
+    Next s
+    For Each s In Array("Chairmen", "Chairwomen", "Chairpersons")
+        AddRule "Inclusive language", s, False, True, True, "IPBES uses 'Chairs'.", "Chairs", True
+        AddRule "Inclusive language", LCase(s), False, True, True, "IPBES uses 'chairs'.", "chairs", True
+    Next s
+    ' pronoun pairs are written in full (UN guidelines); rewording is better where possible
     AddRule "Inclusive language", "he/she", False, False, False, _
-        "Avoid 'he/she': use the plural, 'who', or omit the pronoun."
+        "Avoid 'he/she': use the plural, 'who', or omit the pronoun; at least write 'he or she'.", "he or she", True
     AddRule "Inclusive language", "his/her", False, False, False, _
-        "Avoid 'his/her': use the plural, 'the', or omit the possessive."
-    AddRule "Inclusive language", "him/her", False, False, False, "Avoid 'him/her': rephrase."
-    AddRule "Inclusive language", "(s)he", False, False, False, "Avoid '(s)he': rephrase."
-    AddRule "Inclusive language", "s/he", False, False, False, "Avoid 's/he': rephrase."
-    AddRule "Inclusive language", "mankind", False, False, True, "Use 'humankind' or 'humanity'.", "humankind", True
-    AddRule "Inclusive language", "manpower", False, False, True, "Use 'staffing', 'staff' or 'workforce'."
-    AddRule "Inclusive language", "man-made", False, False, False, "Use 'human-made', 'human-caused' or 'anthropogenic'."
-    AddRule "Inclusive language", "spokesman", False, False, True, "Use 'spokesperson'.", "spokesperson", True
-    AddRule "Inclusive language", "fishermen", False, False, True, "Use 'fishers'.", "fishers", True
-    AddRule "Inclusive language", "layman", False, False, True, "Use 'non-specialist' or 'layperson'."
-    AddRule "Inclusive language", "the disabled", False, False, False, "Use 'persons with disabilities'."
-    AddRule "Inclusive language", "disabled person", False, False, False, "Use 'person with a disability' (person-first)."
-    AddRule "Inclusive language", "disabled people", False, False, False, "Use 'persons with disabilities'."
+        "Avoid 'his/her': use the plural, 'the', or omit the possessive; at least write 'his or her'.", "his or her", True
+    AddRule "Inclusive language", "him/her", False, False, False, "Avoid 'him/her': rephrase; at least write 'him or her'.", "him or her", True
+    AddRule "Inclusive language", "(s)he", False, False, False, "Avoid '(s)he': rephrase; at least write 'she or he'.", "she or he", True
+    AddRule "Inclusive language", "s/he", False, False, False, "Avoid 's/he': rephrase; at least write 'she or he'.", "she or he", True
+    w = Array("mankind", "humankind", "manpower", "staffing", "man-made", "human-made", _
+              "spokesman", "spokesperson", "spokesmen", "spokespersons", "spokeswoman", "spokesperson", _
+              "fisherman", "fisher", "fishermen", "fishers", "layman", "non-specialist", "laymen", "non-specialists", _
+              "policeman", "police officer", "policemen", "police officers", "policewoman", "police officer", _
+              "the disabled", "persons with disabilities", "disabled persons", "persons with disabilities", _
+              "disabled people", "persons with disabilities", "disabled person", "person with a disability", _
+              "the handicapped", "persons with disabilities", "handicapped persons", "persons with disabilities", _
+              "handicapped people", "persons with disabilities", "handicapped person", "person with a disability", _
+              "with special needs", "with disabilities", "differently abled persons", "persons with disabilities", _
+              "differently abled people", "persons with disabilities", "wheelchair-bound person", "wheelchair user", _
+              "is wheelchair-bound", "uses a wheelchair", "are wheelchair-bound", "use wheelchairs", _
+              "is confined to a wheelchair", "uses a wheelchair", "are confined to wheelchairs", "use wheelchairs", _
+              "confined to a wheelchair", "using a wheelchair", _
+              "is suffering from", "has", "are suffering from", "have", "suffering from", "with", _
+              "suffers from", "has", "suffer from", "have", "suffered from", "had", _
+              "the mentally ill", "persons with psychosocial disabilities", _
+              "mentally ill persons", "persons with psychosocial disabilities", _
+              "mentally ill people", "persons with psychosocial disabilities", _
+              "mentally ill person", "person with a psychosocial disability")
+    For i = 0 To UBound(w) Step 2
+        AddRule "Inclusive language", w(i), False, False, True, "Use '" & w(i + 1) & "'.", w(i + 1), True
+    Next i
     AddRule "Inclusive language", "handicapped", False, False, True, "Use 'persons with disabilities'."
     AddRule "Inclusive language", "special needs", False, False, False, "Avoid euphemisms: 'persons with disabilities'."
     AddRule "Inclusive language", "differently abled", False, False, False, "Avoid euphemisms: 'persons with disabilities'."
     AddRule "Inclusive language", "wheelchair-bound", False, False, False, "Use 'wheelchair user'."
-    AddRule "Inclusive language", "confined to a wheelchair", False, False, False, "Use 'wheelchair user'."
-    AddRule "Inclusive language", "suffers from", False, False, False, "Use 'has' or 'with' (e.g., 'person with ...')."
-    AddRule "Inclusive language", "suffering from", False, False, False, "Use 'with' (e.g., 'person with ...')."
     AddRule "Inclusive language", "mentally ill", False, False, False, "Use 'person with a psychosocial disability'."
-    AddRule "Inclusive language", "the blind", False, False, True, "Use 'blind persons' or 'persons with visual impairments'."
-    AddRule "Inclusive language", "the deaf", False, False, True, "Use 'deaf persons' or 'persons who are deaf'."
+    ' "the blind" / "the deaf" as nouns only (not "the blind spot"): followed by punctuation, "and" or "or"
+    For Each s In Array("blind", "deaf")
+        AddRule "Inclusive language", "<the " & s & "([,.;:\)])", True, True, False, _
+            "Use '" & s & " persons'.", s & " persons\1", True
+        For Each e In Array("and", "or")
+            AddRule "Inclusive language", "<the " & s & " " & e & " ", True, True, False, _
+                "Use '" & s & " persons'.", s & " persons " & e & " ", True
+        Next e
+        AddRule "Inclusive language", "the " & s, False, False, True, "Use '" & s & " persons' (check: not 'the " & s & " spot')."
+    Next s
 End Sub
 
 Private Sub AddCode(ByVal code As String, ByVal expansion As String)
     AddRule "Internal codes", code, False, True, True, _
         "Internal abbreviation, not used in IPBES documents. Write the short name: '" & expansion & _
-        "' (full title at first mention)."
+        "' (full title at first mention).", expansion, True
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -379,9 +522,12 @@ Public Sub IPBES_SafeFixes()
     Set doc = ActiveDocument
     If MsgBox("IPBES safe fixes" & vbCr & vbCr & _
               "Track Changes will be switched on, so every change can be reviewed." & vbCr & _
-              "Fixes: Platform name, e.g./i.e. comma, -ize spelling, dashes, double spaces," & vbCr & _
-              "curly quotes, country names and a few terms." & vbCr & vbCr & _
-              "Reject any change that alters the substance or a direct quotation." & vbCr & vbCr & _
+              "Applies every IPBES/UN rule that has a standard correction: Platform name," & vbCr & _
+              "internal codes, honorifics, currency, per cent, dates and times, ranges," & vbCr & _
+              "dashes, spacing, quotes, spelling, terms, country names and inclusive language." & vbCr & vbCr & _
+              "Review every change. Reject those that alter the substance or a direct quotation," & vbCr & _
+              "and the exceptions (published titles, other bodies' names, computer programs," & vbCr & _
+              "court judgments). 'This year' etc. become " & Year(Date) & " - check older documents." & vbCr & vbCr & _
               "Continue?", vbYesNo + vbQuestion, "IPBES") <> vbYes Then Exit Sub
 
     oldTrack = doc.TrackRevisions
@@ -834,7 +980,7 @@ Public Sub IPBES_FixFormatting()
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
     Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long, inRestart As Boolean
-    Dim empties As New Collection, nDeleted As Long
+    Dim empties As New Collection, nDeleted As Long, nSpaces As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -987,6 +1133,11 @@ Public Sub IPBES_FixFormatting()
     Application.StatusBar = "IPBES formatting: removing empty paragraphs..."
     nDeleted = DeleteEmptyParagraphs(doc, empties, nEmpty)
 
+    ' 3c. Runs of two or more spaces -> one space (tracked)
+    Application.StatusBar = "IPBES formatting: double spaces..."
+    DoEvents
+    nSpaces = CollapseSpaces(doc)
+
     ' 4. Tables (not the masthead) and the caption line above them
     iTable = 0
     For Each t In doc.Tables
@@ -1028,6 +1179,7 @@ Public Sub IPBES_FixFormatting()
     msg = msg & "Body paragraphs: " & nBody & IIf(numbered, " (numbered)", " (unnumbered)") & vbCr
     If nNumbers > 0 Then msg = msg & "Typed paragraph numbers removed: " & nNumbers & vbCr
     If nDeleted > 0 Then msg = msg & "Empty spacer paragraphs removed: " & nDeleted & vbCr
+    If nSpaces > 0 Then msg = msg & "Double spaces reduced to one: " & nSpaces & vbCr
     If nCleaned > 0 Then msg = msg & "Manual font, size or colour removed from IPBES-styled paragraphs: " & nCleaned & vbCr
     If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
     If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
@@ -1047,6 +1199,48 @@ Public Sub IPBES_FixFormatting()
         "The view is set to Simple Markup (faster); Review > All Markup shows each change."
     MsgBox msg, vbInformation, "IPBES"
 End Sub
+
+' Replaces every run of two or more spaces with one space in the main text and
+' footnotes (tracked when Track Changes is on). Returns the number of runs.
+Private Function CollapseSpaces(ByVal doc As Document) As Long
+    Dim story As Range, rng As Range, n As Long, guard As Long
+    For Each story In doc.StoryRanges
+        If story.StoryType = wdMainTextStory Or story.StoryType = wdFootnotesStory Then
+            Set rng = story.Duplicate
+            With rng.Find
+                .ClearFormatting
+                .Replacement.ClearFormatting
+                .Text = "[ ]{2,}"
+                .MatchWildcards = True
+                .Forward = True
+                .Wrap = wdFindStop
+                .Format = False
+            End With
+            guard = 0
+            Do While rng.Find.Execute
+                guard = guard + 1
+                If guard > 20000 Then Exit Do
+                n = n + 1
+                rng.Collapse wdCollapseEnd
+            Loop
+            If guard > 0 Then
+                Set rng = story.Duplicate
+                With rng.Find
+                    .ClearFormatting
+                    .Replacement.ClearFormatting
+                    .Text = "[ ]{2,}"
+                    .Replacement.Text = " "
+                    .MatchWildcards = True
+                    .Forward = True
+                    .Wrap = wdFindStop
+                    .Format = False
+                    .Execute Replace:=wdReplaceAll
+                End With
+            End If
+        End If
+    Next story
+    CollapseSpaces = n
+End Function
 
 ' Sets the key IPBES paragraph styles explicitly (values from the IPBES report template,
 ' see ipbes-editorial/references/report-structure.md). Creates a style if it is missing.
