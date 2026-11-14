@@ -93,14 +93,8 @@ The assistant can **analyse** a document against the house style, **fix** it, an
    - **Name:** IPBES editorial assistant
    - **Description:** Edits and standardizes English IPBES documents in the IPBES and UN house style.
    - **Instructions:** paste the whole text of `ipbes-editorial/copilot/ipbes-editorial-instructions.txt`.
-3. Under **Knowledge**, upload the following files by providing the github URL: https://github.com/ipbes/ipbeseditorial/tree/main/ipbes-editorial/references:
-   - `house-style.md`
-   - `ipbes-terms.md`
-   - `report-structure.md`
-   - `inclusive-language.md`
-   - `countries.csv`
+3. Under **Knowledge**, upload the following files by providing the github URL: https://github.com/ipbes/ipbeseditorial/tree/main/ipbes-editorial/references
 
-   If Copilot does not accept `.md` files, use Word copies (see section 4).
 4. Select **Create**. Share the agent with colleagues if that is allowed.
 
 ### Option B: no agent
