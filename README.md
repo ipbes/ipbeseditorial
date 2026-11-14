@@ -50,6 +50,11 @@ Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for
 ### IPBES_ApplyChangeList
 Applies a change table from Copilot or Claude (columns **Original** and **Revised**, optionally **Rule**) to the open document, as tracked changes, keeping all formatting. A change is made only if its original text is found exactly once. Text found more than once gets a comment instead, and the closing message lists the items not applied.
 
+To apply a **change table** (see Copilot section below):
+   1. Paste the table into a new Word document and keep it open.
+   2. Switch back to the document to correct and run **Apply change list** (**IPBES_ApplyChangeList**).
+   3. Read the closing message and review the tracked changes.
+
 ### IPBES_RemoveIPBESComments
 Deletes only the comments the macros added. Other people's comments are kept.
 
@@ -72,18 +77,6 @@ Deletes only the comments the macros added. Other people's comments are kept.
 
    The script copies the IPBES styles and numbering from `ipbes-editorial/assets/ipbes-document-template.docx` into the add-in and adds the ribbon tab from `word-macro/ipbes-ribbon.xml`. It keeps a backup (`IPBES Editorial.dotm.bak`). Run it again after any change to either file. Importing a new `.bas` into the `.dotm` doesn't remove the tab or the styles.
 
-
-### Using the macros
-
-1. Save a copy of the document.
-2. **Fix formatting** first (button on the IPBES tab, or **IPBES_FixFormatting** through **View → Macros**). Answer whether the document has numbered paragraphs, then review the tracked formatting changes.
-3. Run **Check document** (**IPBES_CheckDocument**). Read the report that opens, then step through the comments with **Review → Next comment**.
-4. Optional: run **Safe fixes** (**IPBES_SafeFixes**), then review the tracked changes and accept or reject each one.
-5. To apply a change table from Copilot:
-   1. Paste the table into a new Word document and keep it open.
-   2. Switch back to the document to correct and run **Apply change list** (**IPBES_ApplyChangeList**).
-   3. Read the closing message and review the tracked changes.
-6. When you have finished, run **Remove IPBES comments** (**IPBES_RemoveIPBESComments**).
 
 ### Maintaining the rules
 
