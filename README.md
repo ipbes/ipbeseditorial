@@ -91,9 +91,9 @@ The rules are in the `BuildRules` procedure, one `AddRule` line each. A line giv
 
 ---
 
-## 2. Using the assistant with Copilot (Analysis)
+## 2. Using the assistant with Copilot
 
-The assistant can **analyse** a document against the house style, **fix** it, and **convert** a Markdown draft into a Word document in the IPBES style. Copilot is the tool the organization approves; follow the organization's rules on which tool may be used for which documents.To set up a reusable Copilot agent:
+The assistant can **analyse** a document against the house style, **fix** it, and **convert** a Markdown draft into a Word document in the IPBES style. Copilot **cannot produce a document with tracked changes**. To set up a reusable Copilot agent:
 
 1. Open **Microsoft 365 Copilot Chat** and choose **Create agent** (it may be called **New agent**).
 2. On the **Configure** tab, fill in the fields:
@@ -104,7 +104,7 @@ The assistant can **analyse** a document against the house style, **fix** it, an
 
 4. Select **Create**. Share the agent with colleagues if that is allowed.
 
-if you can't or don't want to set up an agenct, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
+if you can't or don't want to set up an agent, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
 
 ### What to ask
 
