@@ -4,6 +4,28 @@ Editorial tools for English IPBES documents: the IPBES house style for AI assist
 
 **Editorial principle:** the UN Editorial Manual is the baseline. IPBES departs from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [evidence.md](ipbes-editorial/references/evidence.md).
 
+## Quick start: install the IPBES tab in Word (Windows)
+
+1. **Close Word** completely, including any open documents.
+2. **Download the add-in:** [IPBES Editorial.dotm](https://github.com/ipbes/ipbeseditorial/raw/main/ipbes-editorial/IPBES%20Editorial.dotm). It goes to your **Downloads** folder.
+3. **Open your Word Startup folder:** press **Windows key + R**, paste the line below, and press **Enter**. Then move `IPBES Editorial.dotm` from **Downloads** into the folder that opens.
+
+   ```
+   %APPDATA%\Microsoft\Word\STARTUP
+   ```
+
+   If Windows says the folder cannot be found, paste `%APPDATA%\Microsoft\Word` instead, create a new folder there called `STARTUP`, and open it.
+4. **Unblock the file:** Windows blocks macros in files downloaded from the internet. Press the **Windows key**, type **PowerShell**, open it, paste this command, and press **Enter**:
+
+   ```powershell
+   Unblock-File "$env:APPDATA\Microsoft\Word\STARTUP\IPBES Editorial.dotm"
+   ```
+
+   No message means it worked.
+5. **Start Word.** An **IPBES** tab appears after the **Review** tab. See "Using the macros" below for what each button does.
+
+If the tab doesn't appear, see "If the macros don't appear" below, or ask for help.
+
 
 ## 1. Microsoft Word VBA macros (No AI)
 
