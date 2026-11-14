@@ -120,7 +120,7 @@ Attach the document, then ask one of three things:
    Each change is made as a tracked change, with the rule as a comment, and the formatting is kept. You then accept or reject each change.
 3. **Conversion:** "Convert the attached Markdown draft into a Word document in the IPBES style."
 
-   The assistant applies the language rules and returns a Word file. A file created by Copilot does not have the IPBES Word styles. For official documents, ask Copilot for the corrected Markdown instead, then convert it with the converter script (section 4), which uses the IPBES template.
+   The assistant applies the language rules and returns a Word file, but without the IPBES Word styles. Open the file in Word, press **Fix formatting** on the IPBES tab, then choose **Review → Accept → Accept All Changes**. The file now has the IPBES styles, numbering and layout.
 
 **Always read the result before using it.** The assistant lists anything it is unsure of under "queries for the author". It must not change figures, names, dates, quotations or decisions. Report it if it ever does.
 

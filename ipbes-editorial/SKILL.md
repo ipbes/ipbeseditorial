@@ -82,7 +82,9 @@ Colleagues usually ask for one of three things: an **analysis** or a **fix** of 
    python3 scripts/md_to_ipbes_docx.py input.md output.docx [--numbered] [--symbol IPBES/13/5]
    ```
 
-   The script needs python-docx. Otherwise, explain how to apply the styles in the IPBES Word template by hand.
+   The script needs python-docx. If you cannot run this script, return a Word file using Word's built-in styles (Title, Heading 1–4, Normal; no typed paragraph numbers) and tell the user to open it in Word and press **Fix formatting** on the IPBES tab, which converts those styles to the IPBES ones. Keep that file plain so the macro can do the layout:
+   - **Tables:** a simple Word table with automatic widths. Do not set column or table widths, indents, fixed layout, borders or shading. Put the title ("Table 1" and the title) and the headnote ("(Number)") as normal paragraphs directly above the table, and notes directly below it.
+   - **No direct formatting:** no fonts, sizes, colours, spacing or indents on paragraphs; bold and italic only where the rules call for them.
 3. Apply the language rules as well. Converting is not just reformatting.
 4. Add a masthead only if asked, using the logos in `assets/masthead/`.
 

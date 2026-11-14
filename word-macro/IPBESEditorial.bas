@@ -1712,7 +1712,10 @@ Private Function FindSymbol(ByVal doc As Document) As String
 End Function
 
 ' Shrinks a table proportionally if, after the 2.2 cm indent, it is wider than the text column.
-Private Sub FitTableToText(ByVal t As Table)
+' With rewrite = True the widths are written back even when they fit: files made by
+' other tools (such as Copilot) can store cell widths that differ from the column grid
+' Word actually draws, and writing the widths makes Word rebuild the grid from them.
+Private Sub FitTableToText(ByVal t As Table, Optional ByVal rewrite As Boolean = False)
     Dim avail As Single, c As Cell, widths() As Single, maxW As Single, r As Long, f As Single
     On Error Resume Next
     With t.Range.Sections(1).PageSetup
@@ -1726,9 +1729,13 @@ Private Sub FitTableToText(ByVal t As Table)
     For r = 1 To UBound(widths)
         If widths(r) > maxW Then maxW = widths(r)
     Next r
-    If maxW <= avail + 1 Or maxW <= 0 Then Exit Sub
-    f = avail / maxW
+    If maxW <= 0 Then Exit Sub
+    If maxW <= avail + 1 And Not rewrite Then Exit Sub
+    f = 1
+    If maxW > avail + 1 Then f = avail / maxW
     t.AllowAutoFit = False
+    t.PreferredWidthType = wdPreferredWidthPoints
+    t.PreferredWidth = maxW * f
     For Each c In t.Range.Cells
         c.Width = c.Width * f
     Next c
@@ -1741,7 +1748,7 @@ Private Sub FormatTable(ByVal doc As Document, ByVal t As Table)
     Dim c As Cell, txt As String, last As Long
     On Error Resume Next
     t.Rows.LeftIndent = CentimetersToPoints(2.2)
-    FitTableToText t
+    FitTableToText t, True
     ' whole-table operations (one change each, instead of one per cell)
     t.Borders.Enable = False
     t.Shading.BackgroundPatternColor = wdColorAutomatic

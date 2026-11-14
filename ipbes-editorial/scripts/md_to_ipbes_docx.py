@@ -267,6 +267,24 @@ def table_layout(table, ncols):
     for row in table.rows:
         for j, cell in enumerate(row.cells):
             cell.width = Twips(widths[j])
+    # Word draws a fixed-layout table from the grid, not from the cell widths: keep them equal.
+    for col, w in zip(table._tbl.tblGrid.findall(qn('w:gridCol')), widths):
+        col.set(qn('w:w'), str(w))
+    order_tblpr(tblpr)
+
+
+# Element order required by the Word schema (CT_TblPr); Word may ignore elements out of order.
+TBLPR_ORDER = ['tblStyle', 'tblpPr', 'tblOverlap', 'bidiVisual', 'tblStyleRowBandSize',
+               'tblStyleColBandSize', 'tblW', 'jc', 'tblCellSpacing', 'tblInd', 'tblBorders',
+               'shd', 'tblLayout', 'tblCellMar', 'tblLook', 'tblCaption', 'tblDescription']
+
+
+def order_tblpr(tblpr):
+    rank = {qn('w:' + n): i for i, n in enumerate(TBLPR_ORDER)}
+    children = sorted(tblpr, key=lambda e: rank.get(e.tag, len(rank)))
+    for e in children:
+        tblpr.remove(e)
+        tblpr.append(e)
 
 
 # ---------------------------------------------------------------- main conversion
