@@ -88,18 +88,6 @@ The macros check a document against the house style and mark possible issues as 
    3. Read the closing message and review the tracked changes.
 6. When you have finished, run **Remove IPBES comments** (**IPBES_RemoveIPBESComments**).
 
-### First-time test (before sharing)
-
-The macros were written without access to Word, so test them on a copy of a recent Plenary report and on the files in `test/`:
-
-- [ ] The module compiles (**Debug → Compile**).
-- [ ] On the IPBES-12 report (IPBES/12/11), there are few or no masthead comments.
-- [ ] Only straight quotes are marked, not curly ones.
-- [ ] **IPBES_SafeFixes** on `test/ipbes-test-document.docx` produces tracked changes only.
-- [ ] **IPBES_FixFormatting** on a copy of `test/ipbes-test-unformatted.docx` (answer **Yes**, numbered): the result should have A4 paper, Times New Roman, CH1/CH2 headings laid out as "I." and "A." in the margin, paragraphs numbered 1–4 without the typed numbers, the italic "Intergovernmental Panel on Climate Change" kept, "Table 1" with its title and headnote, and a table with horizontal rules only and no shading. The closing message should list the bullet and the empty paragraph.
-- [ ] **IPBES_ApplyChangeList**: open `test/ipbes-test-document.docx` and `test/ipbes-test-change-list.docx`, then run the macro from the test document. Items 1–6 should be applied as tracked changes. The closing message should give item 7 as not found, item 8 as skipped, and item 9 as found twice (with a comment, not applied).
-- [ ] **IPBES_RemoveIPBESComments** leaves other people's comments in place.
-
 ### Maintaining the rules
 
 The rules are in the `BuildRules` procedure, one `AddRule` line each. A line gives the category, the text to find, wildcards, match case, whole word, the message, and optionally the replacement and whether it is a safe fix. Use `ChrW()` for non-ASCII characters, because the VBA editor does not import them reliably.
