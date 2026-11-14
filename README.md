@@ -35,14 +35,23 @@ If the tab doesn't appear, see "If the macros don't appear" below, or ask for he
 
 The macros check a document against the house style and mark possible issues as Word comments. They work in Word itself, without AI and without an internet connection.
 
-| Macro | What it does | Changes the text? |
-|---|---|---|
-| **IPBES_CheckDocument** | Adds a comment starting "[IPBES]" at each possible issue and opens a summary report. Checks the Platform's name, internal codes (BBA, NXS…), abbreviations, numbers and dates, punctuation, spelling, terms, country names, inclusive language, the masthead (logos, symbol, date, spacing) and heading numbering. | No |
-| **IPBES_FixFormatting** | Applies the IPBES layout, which needs the IPBES styles in the add-in (see "IPBES tab and IPBES styles" below). It asks whether the document is a report with numbered paragraphs. It then: copies the IPBES Word styles into the document; sets A4 paper and the IPBES margins; turns Title, Heading 1–4 and Caption into BB_Title, CH1–CH4 and Title_table, laying out heading numbers as tab, "I.", tab; puts body text in Normal_number (numbered) or Normal_No_number, removing typed paragraph numbers and manual fonts, sizes, colours and indents (bold and italic are kept); deletes empty spacer paragraphs (the IPBES styles provide the spacing); turns "Table 1: Title" captions and "(Number)" headnotes into the IPBES table title; and formats tables (indented to the text, horizontal rules only, no shading, italic column heads, numbers right-aligned). Documents that already use the IPBES styles (such as recent Plenary reports) keep their own style definitions, headers, footers, table layout and Normal paragraphs; only other paragraphs, captions and over-wide tables are changed, so the run is quick. It ends with a short summary; the tracked changes are the detailed record, and Ctrl+Z undoes the whole run. Lists, empty paragraphs and unrecognised styles are listed for you to check. | Yes (style and text changes tracked; page set-up and style definitions not) |
-| **IPBES_SafeFixes** | Makes safe corrections **with Track Changes on**: the shortened Platform name, "e.g." → "e.g.,", -ise → -ize, em dashes and spaced hyphens → en dashes, double spaces, straight → curly quotes, country names such as Türkiye and Czechia, "Indigenous Peoples", "spatial planning and connectivity assessment", and a few spellings. | Yes, tracked |
-| **IPBES_CheckVoice** | Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for review. IPBES is policy-relevant, not policy-prescriptive. | No |
-| **IPBES_ApplyChangeList** | Applies a change table from Copilot or Claude (columns **Original** and **Revised**, optionally **Rule**) to the open document, as tracked changes, keeping all formatting. A change is made only if its original text is found exactly once. Text found more than once gets a comment instead, and the closing message lists the items not applied. | Yes, tracked |
-| **IPBES_RemoveIPBESComments** | Deletes only the comments the macros added. Other people's comments are kept. | No |
+### IPBES_CheckDocument
+Adds a comment starting "[IPBES]" at each possible issue and opens a summary report. Checks the Platform's name, internal codes (BBA, NXS…), abbreviations, numbers and dates, punctuation, spelling, terms, country names, inclusive language, the masthead (logos, symbol, date, spacing) and heading numbering.
+
+### IPBES_FixFormatting
+Applies the IPBES layout, which needs the IPBES styles in the add-in (see "IPBES tab and IPBES styles" below). It asks whether the document is a report with numbered paragraphs. It then: copies the IPBES Word styles into the document; sets A4 paper and the IPBES margins; turns Title, Heading 1–4 and Caption into BB_Title, CH1–CH4 and Title_table, laying out heading numbers as tab, "I.", tab; puts body text in Normal_number (numbered) or Normal_No_number, removing typed paragraph numbers and manual fonts, sizes, colours and indents (bold and italic are kept); deletes empty spacer paragraphs (the IPBES styles provide the spacing); turns "Table 1: Title" captions and "(Number)" headnotes into the IPBES table title; and formats tables (indented to the text, horizontal rules only, no shading, italic column heads, numbers right-aligned). Documents that already use the IPBES styles (such as recent Plenary reports) keep their own style definitions, headers, footers, table layout and Normal paragraphs; only other paragraphs, captions and over-wide tables are changed, so the run is quick. It ends with a short summary; the tracked changes are the detailed record, and Ctrl+Z undoes the whole run. Lists, empty paragraphs and unrecognised styles are listed for you to check. Style and text changes tracked; page set-up and style definitions are not)
+
+### IPBES_SafeFixes
+Makes safe corrections **with Track Changes on**: the shortened Platform name, "e.g." → "e.g.,", -ise → -ize, em dashes and spaced hyphens → en dashes, double spaces, straight → curly quotes, country names such as Türkiye and Czechia, "Indigenous Peoples", "spatial planning and connectivity assessment", and a few spellings.
+
+### IPBES_CheckVoice
+Marks prescriptive wording ("must", "should", "need to", "unprecedented"…) for review. IPBES is policy-relevant, not policy-prescriptive. | No |
+
+### IPBES_ApplyChangeList
+Applies a change table from Copilot or Claude (columns **Original** and **Revised**, optionally **Rule**) to the open document, as tracked changes, keeping all formatting. A change is made only if its original text is found exactly once. Text found more than once gets a comment instead, and the closing message lists the items not applied.
+
+### IPBES_RemoveIPBESComments
+Deletes only the comments the macros added. Other people's comments are kept.
 
 - **Agreed text** (decisions, approved summaries for policymakers, quotations) must not be changed. Reject any tracked change there, and treat comments there as queries.
 - The comments are suggestions, not errors. For example, "should" in reported speech, or "Secretariat" in a budget table, is correct.
