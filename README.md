@@ -98,9 +98,9 @@ The assistant can **analyse** a document against the house style, **fix** it, an
    - **Name:** IPBES editorial assistant
    - **Description:** Edits and standardizes English IPBES documents in the IPBES and UN house style.
    - **Instructions:** paste the whole text of `ipbes-editorial/copilot/ipbes-editorial-instructions.txt`.
-3. Under **Knowledge**, upload the following files by providing the github URL: https://github.com/ipbes/ipbeseditorial/tree/main/ipbes-editorial/references
+3. Under **Skills**, select **Add** and upload `ipbes-editorial.zip`. It holds the full rules (house style, terms, country list, spelling list). To make it, run `python3 tools/package_skill.py` in the repository folder. Leave **Knowledge** empty.
 
-4. Select **Create**. Share the agent with colleagues if that is allowed.
+4. Select **Create**. Share the agent with colleagues if that is allowed, so that only one person builds and uploads the zip.
 
 If you can't or don't want to set up an agent, start a new Copilot chat and paste the whole text of the instructions file. Then make your request, in the same message or the next one.
 
@@ -158,8 +158,7 @@ Run these commands from the repository folder. The scripts need Python 3; the Wo
 **After any change to the rules:**
 
 - update `ipbes-editorial/copilot/ipbes-editorial-instructions.txt` (Copilot's limit is 8,000 characters, and the file is close to it);
-- re-upload the knowledge files to the Copilot agent;
-- re-package the Claude skill;
+- re-package the skill (`python3 tools/package_skill.py`) and upload the new zip to the Copilot agent and to Claude;
 - update the matching `AddRule` lines in `word-macro/IPBESEditorial.bas`.
 
 ---

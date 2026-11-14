@@ -70,7 +70,8 @@ Colleagues usually ask for one of three things: an **analysis** or a **fix** of 
    - a short summary with counts;
    - **queries for the author**: anything you flagged but did not change.
 
-   If you cannot run code, give the change table only. The user can apply it in Word with the `IPBES_ApplyChangeList` macro.
+   If you cannot run code, give the change table only. The user can apply it in Word with the `IPBES_ApplyChangeList` macro. Do not offer or promise a revised Word file, and do not ask for the file again.
+5. **Formatting** (styles, headings, numbering, tables, layout) is done in Word by the **Fix formatting** button on the IPBES tab (`IPBES_FixFormatting` macro), which applies the IPBES styles as tracked changes. If you cannot run code and are asked to format or style a document, say so in one sentence, tell the user to run **Fix formatting**, and list any formatting problems as queries.
 
 ### C. Conversion: "Convert this Markdown draft into a Word document in the IPBES style"
 

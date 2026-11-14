@@ -23,7 +23,7 @@ def main():
         for folder, dirs, files in os.walk(SRC):
             dirs[:] = [d for d in dirs if d != '__pycache__' and not d.startswith('.')]
             for f in files:
-                if f.endswith('.pyc') or f.startswith('.'):
+                if f.endswith(('.pyc', '.dotm', '.bak')) or f.startswith('.'):
                     continue
                 path = os.path.join(folder, f)
                 z.write(path, os.path.join(NAME, os.path.relpath(path, SRC)))
