@@ -60,6 +60,9 @@ Private RuleCount As Long
 ' Report lines collected during a check
 Private ReportLines As Collection
 
+' Revision view saved by HideDeletions
+Private svShowRev As Boolean, svRevView As Long, svMarkup As Long, svFilterView As Long
+
 ' Built-in style names, looked up once per run (TargetStyle runs for every paragraph).
 Private bnHeading1 As String, bnHeading2 As String, bnHeading3 As String, bnHeading4 As String
 Private bnTitle As String, bnCaption As String, bnListPara As String, bnListBullet As String, bnListNumber As String
@@ -460,6 +463,7 @@ Public Sub IPBES_CheckDocument()
     If doc Is Nothing Then Exit Sub
     Set ReportLines = New Collection
     Application.ScreenUpdating = False
+    HideDeletions doc
     BuildRules
 
     For i = 1 To RuleCount
@@ -484,6 +488,7 @@ Public Sub IPBES_CheckDocument()
     total = total + CheckCaptions(doc)
     Application.StatusBar = False
 
+    RestoreRevisionView doc
     Application.ScreenUpdating = True
     WriteReport doc, total, "Editorial check"
 End Sub
@@ -494,6 +499,7 @@ Public Sub IPBES_CheckVoice()
     words = Array("must", "should", "need to", "needs to", "it is essential", "it is crucial", "it is vital", _
                   "it is imperative", "urgently", "groundbreaking", "unprecedented", "call on", "calls on")
     Application.ScreenUpdating = False
+    HideDeletions ActiveDocument
     For Each w In words
         Application.StatusBar = "IPBES voice check: '" & w & "'..."
         DoEvents
@@ -512,6 +518,7 @@ Public Sub IPBES_CheckVoice()
         End If
     Next w
     Application.StatusBar = False
+    RestoreRevisionView ActiveDocument
     Application.ScreenUpdating = True
     WriteReport ActiveDocument, total, "Voice check"
 End Sub
@@ -533,6 +540,7 @@ Public Sub IPBES_SafeFixes()
     oldTrack = doc.TrackRevisions
     If Not SetTracking(doc, True) Then Exit Sub
     Application.ScreenUpdating = False
+    HideDeletions doc
     BuildRules
     Set ReportLines = New Collection
 
@@ -569,6 +577,7 @@ Public Sub IPBES_SafeFixes()
         ReportLines.Add "Punctuation" & vbTab & n & vbTab & "fixed" & vbTab & "straight quotes -> curly" & vbTab & ""
     End If
 
+    RestoreRevisionView doc
     SetTracking doc, oldTrack
     Application.ScreenUpdating = True
     msg = total & " change(s) made with Track Changes." & vbCr & _
@@ -1204,6 +1213,7 @@ End Sub
 ' footnotes (tracked when Track Changes is on). Returns the number of runs.
 Private Function CollapseSpaces(ByVal doc As Document) As Long
     Dim story As Range, rng As Range, n As Long, guard As Long
+    HideDeletions doc
     For Each story In doc.StoryRanges
         If story.StoryType = wdMainTextStory Or story.StoryType = wdFootnotesStory Then
             Set rng = story.Duplicate
@@ -1239,6 +1249,7 @@ Private Function CollapseSpaces(ByVal doc As Document) As Long
             End If
         End If
     Next story
+    RestoreRevisionView doc
     CollapseSpaces = n
 End Function
 
@@ -1996,6 +2007,37 @@ End Sub
 
 ' Switches Track Changes on or off. Returns False (after telling the user) if
 ' Word does not allow it.
+' Word's Find also matches tracked deletions while markup is shown. Without this,
+' running a fix twice re-matches the text it deleted the first time and inserts the
+' replacement again ("Ms. Ms. Ms. Omare"), and the checks comment on deleted text.
+' HideDeletions shows the document as Final with no markup, so Find sees only the
+' current text; RestoreRevisionView puts the user's view back.
+Private Sub HideDeletions(ByVal doc As Document)
+    On Error Resume Next
+    With doc.ActiveWindow.View
+        svShowRev = .ShowRevisionsAndComments
+        svRevView = .RevisionsView
+        svMarkup = .RevisionsFilter.Markup
+        svFilterView = .RevisionsFilter.View
+        .RevisionsFilter.Markup = wdRevisionsMarkupNone
+        .RevisionsFilter.View = wdRevisionsViewFinal
+        .ShowRevisionsAndComments = False
+        .RevisionsView = wdRevisionsViewFinal
+    End With
+    Err.Clear
+End Sub
+
+Private Sub RestoreRevisionView(ByVal doc As Document)
+    On Error Resume Next
+    With doc.ActiveWindow.View
+        .RevisionsView = svRevView
+        .ShowRevisionsAndComments = svShowRev
+        .RevisionsFilter.View = svFilterView
+        .RevisionsFilter.Markup = svMarkup
+    End With
+    Err.Clear
+End Sub
+
 Private Function SetTracking(ByVal doc As Document, ByVal onOff As Boolean) As Boolean
     FocusDocumentText doc
     On Error Resume Next
