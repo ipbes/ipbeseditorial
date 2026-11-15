@@ -237,6 +237,8 @@ UN rules:
 - **Quotation marks and apostrophes** are curly (“ ” ‘ ’), never straight.
 - **Apostrophes.** No apostrophe after acronyms, countries or bodies. Write "the IPBES secretariat", "the Government of Brazil", not "IPBES's", "Brazil's Government". Short forms may take one: "the Platform’s".
 - **Colon.** A colon introduces a list. Lettered run-in lists use semicolons, with "and" or "or" before the last item and a full stop at the end.
+  - **IPBES practice:** when a colon ends a paragraph, each item that follows on its own line starts with a capital letter: "Organizational matters:" / "(a) Adoption of the agenda…;" / "(b) Status of the membership…". This holds in all 12 Plenary reports (about 460 cases, 3 exceptions).
+  - Within a sentence, the word after a colon is lower case unless it is a proper noun: "came at a pivotal moment: the Plenary could lead…" (IPBES-12: 110 lower case against 18 capitals, nearly all proper nouns such as country lists).
 - **Slash.** Avoid "and/or". Use "and" or "or". Slashes are fine in symbols (IPBES/12/1) and periods (2025/26).
 - **Lists.**
   - Lettered subparagraphs end with ";", the second to last with "; and" or "; or", and the last with ".".

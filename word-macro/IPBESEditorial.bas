@@ -577,6 +577,12 @@ Public Sub IPBES_SafeFixes()
         ReportLines.Add "Punctuation" & vbTab & n & vbTab & "fixed" & vbTab & "straight quotes -> curly" & vbTab & ""
     End If
 
+    Application.StatusBar = "IPBES safe fixes: capitals after a colon..."
+    DoEvents
+    n = CapitalizeAfterColon(doc)
+    Application.StatusBar = False
+    total = total + n
+
     RestoreRevisionView doc
     SetTracking doc, oldTrack
     Application.ScreenUpdating = True
@@ -1212,45 +1218,15 @@ End Sub
 ' Replaces every run of two or more spaces with one space in the main text and
 ' footnotes (tracked when Track Changes is on). Returns the number of runs.
 Private Function CollapseSpaces(ByVal doc As Document) As Long
-    Dim story As Range, rng As Range, n As Long, guard As Long
+    Dim r As IpbesRule
+    r.Category = "Punctuation"
+    r.FindText = "[ ]{2,}"
+    r.UseWildcards = True
+    r.Replacement = " "
+    r.AutoFix = True
     HideDeletions doc
-    For Each story In doc.StoryRanges
-        If story.StoryType = wdMainTextStory Or story.StoryType = wdFootnotesStory Then
-            Set rng = story.Duplicate
-            With rng.Find
-                .ClearFormatting
-                .Replacement.ClearFormatting
-                .Text = "[ ]{2,}"
-                .MatchWildcards = True
-                .Forward = True
-                .Wrap = wdFindStop
-                .Format = False
-            End With
-            guard = 0
-            Do While rng.Find.Execute
-                guard = guard + 1
-                If guard > 20000 Then Exit Do
-                n = n + 1
-                rng.Collapse wdCollapseEnd
-            Loop
-            If guard > 0 Then
-                Set rng = story.Duplicate
-                With rng.Find
-                    .ClearFormatting
-                    .Replacement.ClearFormatting
-                    .Text = "[ ]{2,}"
-                    .Replacement.Text = " "
-                    .MatchWildcards = True
-                    .Forward = True
-                    .Wrap = wdFindStop
-                    .Format = False
-                    .Execute Replace:=wdReplaceAll
-                End With
-            End If
-        End If
-    Next story
+    CollapseSpaces = ReplaceRule(doc, r)
     RestoreRevisionView doc
-    CollapseSpaces = n
 End Function
 
 ' Sets the key IPBES paragraph styles explicitly (values from the IPBES report template,
@@ -2093,11 +2069,13 @@ Private Function MarkRule(ByVal doc As Document, r As IpbesRule, ByRef sample As
             Do While rng.Find.Execute
                 guard = guard + 1
                 If guard > 5000 Then Exit Do
+                If InDeletion(rng) Then GoTo NextMatch
                 n = n + 1
                 If Len(sample) = 0 Then sample = rng.Text
                 If story.StoryType = wdMainTextStory And n <= MAX_COMMENTS_PER_RULE Then
                     doc.Comments.Add rng, TAG & r.Message & IIf(r.AutoFix, " [fixable with IPBES_SafeFixes]", "")
                 End If
+NextMatch:
                 rng.Collapse wdCollapseEnd
             Loop
         End If
@@ -2105,37 +2083,128 @@ Private Function MarkRule(ByVal doc As Document, r As IpbesRule, ByRef sample As
     MarkRule = n
 End Function
 
-Private Function CountRule(ByVal doc As Document, r As IpbesRule) As Long
-    Dim story As Range, rng As Range, n As Long
+' True if the range touches text that is a tracked deletion. Word's Find still
+' matches deleted text, so without this check a second run re-matches what the
+' first run deleted and inserts the replacement again ("Ms. Ms. Ms. Omare").
+Private Function InDeletion(ByVal rng As Range) As Boolean
+    Dim rv As Revision
+    On Error Resume Next
+    If rng.Revisions.Count = 0 Then Exit Function
+    For Each rv In rng.Revisions
+        If rv.Type = wdRevisionDelete Then
+            InDeletion = True
+            Exit Function
+        End If
+    Next rv
+End Function
+
+' Replaces the matches one by one (main text and footnotes), skipping any match
+' inside a tracked deletion. Returns the number of replacements.
+' With MatchCase off, Word keeps the capitalization of the found text.
+Private Function ReplaceRule(ByVal doc As Document, r As IpbesRule) As Long
+    Dim story As Range, rng As Range, m As Range, n As Long, guard As Long
+    Dim sType As Long, startPos As Long, endPos As Long, lenBefore As Long, resumeAt As Long
     For Each story In doc.StoryRanges
-        If story.StoryType = wdMainTextStory Or story.StoryType = wdFootnotesStory Then
-            Set rng = story.Duplicate
+        sType = story.StoryType
+        If sType = wdMainTextStory Or sType = wdFootnotesStory Then
+            Set rng = doc.StoryRanges(sType).Duplicate
             PrepareFind rng, r
+            guard = 0
             Do While rng.Find.Execute
-                n = n + 1
-                If n > 5000 Then Exit Do
-                rng.Collapse wdCollapseEnd
+                guard = guard + 1
+                If guard > 5000 Then Exit Do
+                If InDeletion(rng) Then
+                    rng.Collapse wdCollapseEnd
+                Else
+                    startPos = rng.Start
+                    endPos = rng.End
+                    lenBefore = doc.StoryRanges(sType).End
+                    Set m = rng.Duplicate
+                    PrepareFind m, r
+                    m.Find.Replacement.Text = r.Replacement
+                    If m.Find.Execute(Replace:=wdReplaceOne) Then n = n + 1
+                    ' carry on after the replacement (and after the tracked deletion)
+                    resumeAt = endPos + (doc.StoryRanges(sType).End - lenBefore)
+                    If resumeAt <= startPos Then resumeAt = startPos + 1
+                    Set rng = doc.StoryRanges(sType).Duplicate
+                    If resumeAt >= rng.End Then Exit Do
+                    rng.Start = resumeAt
+                    PrepareFind rng, r
+                End If
             Loop
         End If
     Next story
-    CountRule = n
+    ReplaceRule = n
 End Function
 
-' Counts the matches, then replaces them all (main text and footnotes).
-' With MatchCase off, Word keeps the capitalization of the found text.
-Private Function ReplaceRule(ByVal doc As Document, r As IpbesRule) As Long
-    Dim story As Range, rng As Range, n As Long
-    n = CountRule(doc, r)
-    If n = 0 Then Exit Function
-    For Each story In doc.StoryRanges
-        If story.StoryType = wdMainTextStory Or story.StoryType = wdFootnotesStory Then
-            Set rng = story.Duplicate
-            PrepareFind rng, r
-            rng.Find.Replacement.Text = r.Replacement
-            rng.Find.Execute Replace:=wdReplaceAll
+' When a paragraph ends with a colon, the items that follow start with a capital
+' (IPBES practice in all 12 Plenary reports: agenda items, lists, (a), (b)...).
+' The run of items continues while each item ends with ";", "; and" or "; or".
+' Tables are skipped. Returns the number of letters capitalized.
+Private Function CapitalizeAfterColon(ByVal doc As Document) As Long
+    Dim p As Paragraph, t As String, inChain As Boolean, n As Long
+    Dim tbls As Collection, ti As Long
+    Set tbls = TableRanges(doc)
+    ti = 1
+    For Each p In doc.Paragraphs
+        If InTableFast(p.Range.Start, tbls, ti) Then
+            inChain = False
+        Else
+            If inChain Then n = n + CapFirstLetter(doc, p)
+            t = Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), vbTab, " ")
+            t = RTrim(t)
+            If Right(t, 1) = ":" Then
+                inChain = True
+            ElseIf inChain And (Right(t, 1) = ";" Or Right(t, 5) = "; and" Or Right(t, 4) = "; or") Then
+                inChain = True
+            Else
+                inChain = False
+            End If
         End If
-    Next story
-    ReplaceRule = n
+    Next p
+    CapitalizeAfterColon = n
+End Function
+
+' Capitalizes the first letter of a list item, after any typed label such as
+' "(a)", "(iv)", "1." or "a." and any tabs, spaces or opening quotes.
+' Returns 1 if a letter was changed. URLs and text starting with a figure are left alone.
+Private Function CapFirstLetter(ByVal doc As Document, ByVal p As Paragraph) As Long
+    Dim txt As String, i As Long, k As Long, ch As String, r As Range, pStart As Long
+    txt = p.Range.Text
+    pStart = p.Range.Start
+    i = 1
+    Do While i <= Len(txt) And (Mid(txt, i, 1) = " " Or Mid(txt, i, 1) = vbTab)
+        i = i + 1
+    Loop
+    ' typed label
+    If Mid(txt, i, 1) = "(" Then
+        k = InStr(i, txt, ")")
+        If k > 0 And k - i <= 6 Then i = k + 1
+    Else
+        k = i
+        Do While k <= Len(txt) And k - i < 5 And Mid(txt, k, 1) Like "[0-9A-Za-z]"
+            k = k + 1
+        Loop
+        If k > i And Mid(txt, k, 1) = "." And (Mid(txt, k + 1, 1) = " " Or Mid(txt, k + 1, 1) = vbTab) Then i = k + 1
+    End If
+    Do While i <= Len(txt) And i < 60
+        ch = Mid(txt, i, 1)
+        Set r = doc.Range(pStart + i - 1, pStart + i)
+        If r.Text <> ch Then Exit Function          ' text and positions out of step (field etc.): leave it
+        If InDeletion(r) Then
+            ' deleted text from an earlier run: look past it
+        ElseIf ch = " " Or ch = vbTab Or ch = Chr(34) Or ch = ChrW(8220) Or ch = Chr(39) Or ch = ChrW(8216) Then
+            ' skip
+        ElseIf ch Like "[a-z]" Then
+            If LCase(Mid(txt, i, 4)) = "http" Or LCase(Mid(txt, i, 4)) = "www." Then Exit Function
+            r.Text = UCase(ch)
+            CapFirstLetter = 1
+            Exit Function
+        Else
+            Exit Function                           ' capital, figure or other character: nothing to do
+        End If
+        i = i + 1
+    Loop
 End Function
 
 ' Converts straight quotes and apostrophes to curly ones, one by one, choosing
