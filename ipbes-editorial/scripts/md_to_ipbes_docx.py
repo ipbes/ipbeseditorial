@@ -291,6 +291,41 @@ def order_tblpr(tblpr):
 HEAD_NUM = re.compile(r'^(?:([IVXLC]+)\.|([A-Z])\.|(\d+)\.|\(([a-z])\))\s+')
 
 
+LABEL = r'(?:\(?(?:[a-z]|[ivx]+|\d+)\)|[a-z]\.|\d+\.)'
+
+
+def normalise_list_line(line):
+    """Accept the list forms an assistant may write: "**(a)** text" -> "(a) text";
+    "- (a) text" or "* (a) text" -> "(a) text" (the bullet is dropped, the label kept)."""
+    line = re.sub(r'^(\s*)\*\*(' + LABEL + r')\*\*\s+', r'\1\2 ', line)
+    line = re.sub(r'^(\s*)[-*+]\s+(' + LABEL + r')\s+', r'\1\2 ', line)
+    return line
+
+
+def _end(text):
+    return re.sub(r'[*_\s]+$', '', text or '')
+
+
+def ends_with_colon(text):
+    return _end(text).endswith(':')
+
+
+def continues_list(text):
+    """A list item ending with ';', '; and' or '; or' is followed by another item of the same list."""
+    t = _end(text)
+    return t.endswith(';') or t.endswith('; and') or t.endswith('; or')
+
+
+def cap_first(text):
+    """Capitalize the first letter of a list item (after Markdown emphasis or an opening
+    quote). URLs and items that start with a figure or a capital are left alone."""
+    m = re.match(r'^([\s*_"“\'‘]*)([a-z])', text)
+    if not m or re.match(r'(https?:|www\.)', text[m.end(1):], re.I):
+        return text
+    count('capitals after a colon')
+    return text[:m.start(2)] + m.group(2).upper() + text[m.end(2):]
+
+
 def convert(md_text, out, template, numbered, symbol, number_headings):
     doc = Document(template)
     body = doc.element.body
@@ -308,19 +343,25 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
     footnotes = Footnotes(doc, defs)
     num_id = body_num_id(doc)
 
-    lines = md_text.splitlines()
+    lines = [normalise_list_line(l) for l in md_text.splitlines()]
     i = 0
     counters = {2: 0, 3: 0, 4: 0, 5: 0}
     para_buf = []
     pending_table_title = None
 
     last_text = ['']          # text of the last body paragraph (to detect a chapeau ending with ':')
+    # True while the next paragraph or list item follows a colon (or continues a list
+    # introduced by one): IPBES practice is a capital letter there.
+    colon_chain = [False]
 
     def flush_para():
         nonlocal para_buf
         if not para_buf:
             return
         text = typography(' '.join(s.strip() for s in para_buf))
+        if colon_chain[0]:
+            text = cap_first(text)
+        colon_chain[0] = ends_with_colon(text) or (colon_chain[0] and continues_list(text))
         last_text[0] = text
         para_buf = []
         p = doc.add_paragraph(style='Normal_number' if numbered else 'Normal_No_number')
@@ -341,6 +382,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
             level = len(m.group(1))
             text = typography(m.group(2).strip().rstrip('.') if not re.search(r'\b[a-z]\.$', m.group(2)) else m.group(2).strip())
             last_text[0] = ''
+            colon_chain[0] = False
             if level == 1:
                 p = doc.add_paragraph(style='BB_Title')
                 add_runs(p, text, footnotes)
@@ -372,6 +414,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
         mt = re.match(r'^\**(Table|Figure)\s+([0-9IVX]+(?:\.\d+)?)\**\s*[:.\u2013-]?\s*(.*)$', s)
         if mt and (i + 1 < len(lines)):
             flush_para()
+            colon_chain[0] = False
             kind, num, title = mt.group(1), mt.group(2), mt.group(3).strip('* ')
             p = doc.add_paragraph(style='Title_table' if kind == 'Table' else ('Title_figure' if 'Title_figure' in [x.name for x in doc.styles] else 'Title_table'))
             r = p.add_run('%s %s' % (kind, num))
@@ -387,6 +430,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
         # tables
         if s.startswith('|'):
             flush_para()
+            colon_chain[0] = False
             rows = []
             while i < len(lines) and lines[i].strip().startswith('|'):
                 row = lines[i].strip().strip('|').split('|')
@@ -399,6 +443,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
         # block quote
         if s.startswith('>'):
             flush_para()
+            colon_chain[0] = False
             q = []
             while i < len(lines) and lines[i].strip().startswith('>'):
                 q.append(lines[i].strip()[1:].strip()); i += 1
@@ -440,7 +485,14 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
             continues_paras = (top_kind == 'num' and not after_chapeau)
             shift = 0 if continues_paras else 1
             idx = {}
+            in_chain = colon_chain[0]
+            whole_list = in_chain          # a list introduced by a colon: every item
             for depth, kind, text in items:
+                # IPBES practice: items on their own lines after a colon start with a
+                # capital; the run continues while items end with ';', '; and', '; or'.
+                if in_chain or whole_list:
+                    text = cap_first(text)
+                in_chain = ends_with_colon(text) or (in_chain and continues_list(text))
                 d = depth - base
                 for k in list(idx):
                     if k > d:
@@ -467,6 +519,7 @@ def convert(md_text, out, template, numbered, symbol, number_headings):
                 add_runs(p, text, footnotes)
                 count('list items')
             last_text[0] = text
+            colon_chain[0] = in_chain
             continue
 
         para_buf.append(s)

@@ -35,7 +35,7 @@ STYLE
 - Numbers: one to nine in words, 10+ in figures; never start a sentence with a figure; "per cent" in text (never %); $200,000 (not US$/USD); thousands with commas in text, spaces in tables; 1.5 million.
 - Dates and time: 12 February 2026 (no comma); "from 3 to 8 February 2026"; "3–8 February 2026" in mastheads; 2025–2026; 9.55 a.m., noon (not 9:55 or 10.00 a.m.); give the year, never "this year".
 - Punctuation: no serial comma unless needed for clarity; curly quotes and apostrophes (“ ” ‘ ’); en dash for ranges (no spaces) and asides (spaced); never em dash; one space after full stops; no double spaces. Quotations: double marks, single inside.
-- Lists: chapeau ends with a colon; (a), (b) items end with ";", the second to last adds "and"/"or", the last ends with "."; then (i), (ii).
+- Lists: chapeau ends with a colon; (a), (b) items end with ";", the second to last adds "and"/"or", the last ends with "."; then (i), (ii). Each item on its own line after a colon starts with a capital ("(a) Representatives of…; (b) Observers…"); within a sentence, lower case after a colon (except proper nouns).
 
 FORMAT
 - Headings: I. / A. / 1. / (a); sentence case; no full stop; no lone subheading (an A needs a B); no gaps in numbering.

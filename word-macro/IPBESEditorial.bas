@@ -2101,9 +2101,15 @@ End Function
 ' Replaces the matches one by one (main text and footnotes), skipping any match
 ' inside a tracked deletion. Returns the number of replacements.
 ' With MatchCase off, Word keeps the capitalization of the found text.
+'
+' Word's own tracked replace can scramble a match whose replacement keeps part of
+' it ("Mrs O" -> "Ms. O" came out as "OMs. mare"). So the new text is worked out in
+' a hidden scratch document, and only the characters that differ are changed here:
+' the new characters are inserted, then the old ones deleted.
 Private Function ReplaceRule(ByVal doc As Document, r As IpbesRule) As Long
     Dim story As Range, rng As Range, m As Range, n As Long, guard As Long
     Dim sType As Long, startPos As Long, endPos As Long, lenBefore As Long, resumeAt As Long
+    Dim scratch As Document, oldText As String, newText As String
     For Each story In doc.StoryRanges
         sType = story.StoryType
         If sType = wdMainTextStory Or sType = wdFootnotesStory Then
@@ -2119,10 +2125,25 @@ Private Function ReplaceRule(ByVal doc As Document, r As IpbesRule) As Long
                     startPos = rng.Start
                     endPos = rng.End
                     lenBefore = doc.StoryRanges(sType).End
-                    Set m = rng.Duplicate
-                    PrepareFind m, r
-                    m.Find.Replacement.Text = r.Replacement
-                    If m.Find.Execute(Replace:=wdReplaceOne) Then n = n + 1
+                    oldText = rng.Text
+                    If scratch Is Nothing Then
+                        Set scratch = NewScratch()
+                        On Error Resume Next
+                        doc.Activate                ' Word may make the new document active
+                        On Error GoTo 0
+                    End If
+                    If ScratchReplace(scratch, r, oldText, newText) And Len(oldText) = endPos - startPos Then
+                        If newText <> oldText Then
+                            EditDifference doc, startPos, oldText, newText
+                            n = n + 1
+                        End If
+                    Else
+                        ' fallback: Word's own replace
+                        Set m = rng.Duplicate
+                        PrepareFind m, r
+                        m.Find.Replacement.Text = r.Replacement
+                        If m.Find.Execute(Replace:=wdReplaceOne) Then n = n + 1
+                    End If
                     ' carry on after the replacement (and after the tracked deletion)
                     resumeAt = endPos + (doc.StoryRanges(sType).End - lenBefore)
                     If resumeAt <= startPos Then resumeAt = startPos + 1
@@ -2134,8 +2155,55 @@ Private Function ReplaceRule(ByVal doc As Document, r As IpbesRule) As Long
             Loop
         End If
     Next story
+    If Not scratch Is Nothing Then scratch.Close SaveChanges:=wdDoNotSaveChanges
     ReplaceRule = n
 End Function
+
+Private Function NewScratch() As Document
+    Set NewScratch = Documents.Add(Visible:=False)
+    NewScratch.TrackRevisions = False
+End Function
+
+' Runs the rule on a copy of the matched text in the scratch document.
+' Returns False if the rule does not match the copy on its own.
+Private Function ScratchReplace(ByVal scratch As Document, r As IpbesRule, ByVal oldText As String, _
+                                ByRef newText As String) As Boolean
+    Dim sr As Range
+    If InStr(oldText, vbCr) > 0 Or InStr(oldText, Chr(7)) > 0 Then Exit Function
+    On Error GoTo Failed
+    scratch.Content.Text = oldText
+    Set sr = scratch.Content
+    PrepareFind sr, r
+    sr.Find.Replacement.Text = r.Replacement
+    If Not sr.Find.Execute(Replace:=wdReplaceOne) Then Exit Function
+    newText = scratch.Content.Text
+    If Right(newText, 1) = vbCr Then newText = Left(newText, Len(newText) - 1)
+    ScratchReplace = True
+    Exit Function
+Failed:
+    ScratchReplace = False
+End Function
+
+' Changes oldText (starting at startPos) into newText by touching only the middle
+' part that differs: inserts the new characters, then deletes the old ones.
+Private Sub EditDifference(ByVal doc As Document, ByVal startPos As Long, ByVal oldText As String, ByVal newText As String)
+    Dim pre As Long, suf As Long, lo As Long, ln As Long, newMid As String, oldMidLen As Long
+    lo = Len(oldText): ln = Len(newText)
+    Do While pre < lo And pre < ln
+        If Mid(oldText, pre + 1, 1) <> Mid(newText, pre + 1, 1) Then Exit Do
+        pre = pre + 1
+    Loop
+    Do While suf < lo - pre And suf < ln - pre
+        If Mid(oldText, lo - suf, 1) <> Mid(newText, ln - suf, 1) Then Exit Do
+        suf = suf + 1
+    Loop
+    newMid = Mid(newText, pre + 1, ln - pre - suf)
+    oldMidLen = lo - pre - suf
+    If Len(newMid) > 0 Then doc.Range(startPos + pre, startPos + pre).InsertAfter newMid
+    If oldMidLen > 0 Then
+        doc.Range(startPos + pre + Len(newMid), startPos + pre + Len(newMid) + oldMidLen).Delete
+    End If
+End Sub
 
 ' When a paragraph ends with a colon, the items that follow start with a capital
 ' (IPBES practice in all 12 Plenary reports: agenda items, lists, (a), (b)...).
