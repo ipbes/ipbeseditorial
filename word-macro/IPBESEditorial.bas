@@ -581,7 +581,10 @@ Public Sub IPBES_SafeFixes()
     DoEvents
     n = CapitalizeAfterColon(doc)
     Application.StatusBar = False
-    total = total + n
+    If n > 0 Then
+        total = total + n
+        ReportLines.Add "Punctuation" & vbTab & n & vbTab & "fixed" & vbTab & "capital letter in list items after a colon" & vbTab & ""
+    End If
 
     RestoreRevisionView doc
     SetTracking doc, oldTrack
@@ -995,7 +998,7 @@ Public Sub IPBES_FixFormatting()
     Dim nTitle As Long, nCaptions As Long, nTables As Long, nEmpty As Long, nLists As Long
     Dim stylesCopied As Boolean, typedMode As Boolean, typed As Long, nNumbered As Long, nRestarts As Long
     Dim otherStyles As String, nHeaders As Long, nParas As Long, iPara As Long, iTable As Long, nCleaned As Long, inRestart As Boolean
-    Dim empties As New Collection, nDeleted As Long, nSpaces As Long
+    Dim empties As New Collection, nDeleted As Long, nSpaces As Long, nCaps As Long
 
     Set doc = ActiveDocument
     If Not AddinHasStyles() Then
@@ -1153,6 +1156,13 @@ Public Sub IPBES_FixFormatting()
     DoEvents
     nSpaces = CollapseSpaces(doc)
 
+    ' 3d. List items after a paragraph ending with a colon start with a capital (tracked)
+    Application.StatusBar = "IPBES formatting: capitals after a colon..."
+    DoEvents
+    HideDeletions doc
+    nCaps = CapitalizeAfterColon(doc)
+    RestoreRevisionView doc
+
     ' 4. Tables (not the masthead) and the caption line above them
     iTable = 0
     For Each t In doc.Tables
@@ -1195,6 +1205,7 @@ Public Sub IPBES_FixFormatting()
     If nNumbers > 0 Then msg = msg & "Typed paragraph numbers removed: " & nNumbers & vbCr
     If nDeleted > 0 Then msg = msg & "Empty spacer paragraphs removed: " & nDeleted & vbCr
     If nSpaces > 0 Then msg = msg & "Double spaces reduced to one: " & nSpaces & vbCr
+    If nCaps > 0 Then msg = msg & "List items after a colon given a capital letter: " & nCaps & vbCr
     If nCleaned > 0 Then msg = msg & "Manual font, size or colour removed from IPBES-styled paragraphs: " & nCleaned & vbCr
     If nRestarts > 0 Then msg = msg & "Numbering restarted at 1 (check these, e.g. decisions): " & nRestarts & vbCr
     If nCaptions + nTables > 0 Then msg = msg & "Tables: " & nTables & ", captions: " & nCaptions & vbCr
@@ -2207,30 +2218,62 @@ End Sub
 
 ' When a paragraph ends with a colon, the items that follow start with a capital
 ' (IPBES practice in all 12 Plenary reports: agenda items, lists, (a), (b)...).
-' The run of items continues while each item ends with ";", "; and" or "; or".
-' Tables are skipped. Returns the number of letters capitalized.
+' The run of items continues while each item ends with ";", "; and" or "; or",
+' or is an unpunctuated list item ("(b) regional", an auto-numbered item or a
+' short line). It stops at a full stop, a heading or a table.
+' Returns the number of letters capitalized.
 Private Function CapitalizeAfterColon(ByVal doc As Document) As Long
-    Dim p As Paragraph, t As String, inChain As Boolean, n As Long
-    Dim tbls As Collection, ti As Long
+    Dim p As Paragraph, t As String, inChain As Boolean, n As Long, last As String
+    Dim tbls As Collection, ti As Long, isHeading As Boolean
     Set tbls = TableRanges(doc)
     ti = 1
     For Each p In doc.Paragraphs
         If InTableFast(p.Range.Start, tbls, ti) Then
             inChain = False
         Else
-            If inChain Then n = n + CapFirstLetter(doc, p)
-            t = Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), vbTab, " ")
-            t = RTrim(t)
-            If Right(t, 1) = ":" Then
-                inChain = True
-            ElseIf inChain And (Right(t, 1) = ";" Or Right(t, 5) = "; and" Or Right(t, 4) = "; or") Then
-                inChain = True
-            Else
+            isHeading = False
+            On Error Resume Next
+            isHeading = (p.OutlineLevel <> wdOutlineLevelBodyText)
+            On Error GoTo 0
+            t = Replace(Replace(Replace(Replace(p.Range.Text, vbCr, ""), Chr(11), ""), Chr(12), ""), vbTab, " ")
+            t = Trim(t)
+            If Len(t) = 0 Then
+                ' empty paragraph between the colon and the list: keep the chain
+            ElseIf isHeading Then
                 inChain = False
+            Else
+                If inChain Then n = n + CapFirstLetter(doc, p)
+                last = Right(t, 1)
+                If last = ":" Then
+                    inChain = True
+                ElseIf inChain And (last = ";" Or Right(t, 5) = "; and" Or Right(t, 4) = "; or") Then
+                    inChain = True
+                ElseIf inChain And InStr(".!?", last) = 0 And IsListItem(p, t) Then
+                    inChain = True
+                Else
+                    inChain = False
+                End If
             End If
         End If
     Next p
     CapitalizeAfterColon = n
+End Function
+
+' True if the paragraph looks like a list item: Word numbering or bullets, a typed
+' label such as "(a)", "(iv)", "1." or "a.", or a short line (up to 80 characters).
+Private Function IsListItem(ByVal p As Paragraph, ByVal t As String) As Boolean
+    Dim k As Long
+    On Error Resume Next
+    If p.Range.ListFormat.ListType <> wdListNoNumbering Then IsListItem = True
+    On Error GoTo 0
+    If IsListItem Then Exit Function
+    If Len(t) <= 80 Then IsListItem = True: Exit Function
+    If Left(t, 1) = "(" Then
+        k = InStr(t, ")")
+        If k > 2 And k <= 7 Then IsListItem = True
+    ElseIf t Like "[0-9A-Za-z]. *" Or t Like "[0-9A-Za-z][0-9A-Za-z]. *" Or t Like "[ivx][ivx]*. *" Then
+        IsListItem = True
+    End If
 End Function
 
 ' Capitalizes the first letter of a list item, after any typed label such as
