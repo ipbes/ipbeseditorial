@@ -4,7 +4,7 @@ Editorial tools for English IPBES documents: the IPBES house style for MS Word m
 
 **Editorial principle:** the UN Editorial Manual is the baseline. IPBES departs from it only where its Plenary reports (IPBES-1 to IPBES-12) show a deliberate and consistent practice. The evidence is in [evidence.md](ipbes-editorial/references/evidence.md).
 
-## Quick start: install the IPBES tab in Word (Windows)
+## Quick start: install the IPBES tab in MS Word
 
 1. **Close Word** completely, including any open documents.
 2. **Download the add-in:** [IPBES Editorial.dotm](https://github.com/ipbes/ipbeseditorial/raw/main/ipbes-editorial/IPBES%20Editorial.dotm). It goes to your **Downloads** folder.
