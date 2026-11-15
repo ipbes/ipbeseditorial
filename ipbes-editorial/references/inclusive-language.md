@@ -37,7 +37,7 @@ The UN guidelines give three strategies. Use them together, and keep the text cl
 
 | Instead of | Use |
 |---|---|
-| chairman, chairwoman | Chair; in IPBES: Chair, Co-Chair, Vice-Chair (see `house-style.md`) |
+| chairman, chairwoman, chairperson, chairlady | Chair; in IPBES: Chair, Co-Chair, Vice-Chair (see `house-style.md`) |
 | spokesman | spokesperson |
 | policeman, policewoman | police officer |
 | mankind | humankind, humanity, the human race |

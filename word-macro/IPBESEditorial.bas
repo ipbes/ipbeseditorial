@@ -393,11 +393,11 @@ Private Sub BuildRules()
 
     ' --- Inclusive language --------------------------------------------------
     ' Case-sensitive pairs so the replacement keeps the capital (or not).
-    For Each s In Array("Chairman", "Chairwoman", "Chairperson")
+    For Each s In Array("Chairman", "Chairwoman", "Chairperson", "Chairlady", "Chair-lady", "Chair lady")
         AddRule "Inclusive language", s, False, True, True, "IPBES uses 'Chair'.", "Chair", True
         AddRule "Inclusive language", LCase(s), False, True, True, "IPBES uses 'chair'.", "chair", True
     Next s
-    For Each s In Array("Chairmen", "Chairwomen", "Chairpersons")
+    For Each s In Array("Chairmen", "Chairwomen", "Chairpersons", "Chairladies", "Chair-ladies", "Chair ladies")
         AddRule "Inclusive language", s, False, True, True, "IPBES uses 'Chairs'.", "Chairs", True
         AddRule "Inclusive language", LCase(s), False, True, True, "IPBES uses 'chairs'.", "chairs", True
     Next s
