@@ -112,7 +112,7 @@ The secretariat has a shared agent, so you don't need to set anything up:
 2. Search the agents for **IPBES editorial assistant** and open it.
 3. Attach your document and paste one of the prompts below.
 
-### Setting up the agent (secretariat editor only)
+### Setting up the agent (if you can't access shared agent above)
 
 1. Open **Microsoft 365 Copilot Chat** and choose **Create agent** (it may be called **New agent**).
 2. On the **Configure** tab, fill in the fields:
