@@ -37,8 +37,8 @@ The macros check a document against the house style and mark possible issues as 
 
 1. **Fix formatting**: answer whether the document has numbered paragraphs, then review the tracked changes.
 2. **Check document**: read the report, then step through the comments with **Review → Next comment**.
-3. **Safe fixes** (optional): accept or reject each tracked change.
-4. **Remove IPBES comments** when you have finished.
+3. **Safe fixes**: accept or reject each tracked change.
+4. **Remove IPBES comments**: delete comments added by tool.
 
 ### IPBES_CheckDocument
 Adds a comment starting "[IPBES]" at each possible issue and opens a summary report. Checks the Platform's name, internal codes (BBA, NXS…), abbreviations, numbers and dates, punctuation, spelling, terms, country names, inclusive language, the masthead (logos, symbol, date, spacing) and heading numbering.
