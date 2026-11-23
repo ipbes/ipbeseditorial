@@ -157,6 +157,7 @@ You ask for things the same way as in section 2. The difference is that Claude c
 
 - **Fixing:** Claude writes the change table and applies it to your original Word file with `apply_changes.py`. You get your document back with tracked changes, comments giving the rules, and all formatting kept. You don't need to run the macro yourself.
 - **Conversion:** Claude uses the converter script with the IPBES template, so the Word file has the IPBES styles.
+- **Presentations:** give Claude the text of a presentation and any images. The standard deck (*Standard Slides_IPBES Intro.pptx*) is included in the skill. Claude rewrites the text as a slide outline, checks the language, converts the outline into slides in the style of the standard deck and returns the PowerPoint file with a change table and queries. See [presentations.md](ipbes-editorial/references/presentations.md); [ipbes-test-slides.md](test/ipbes-test-slides.md) is a sample outline that uses every element.
 
 The same safety rules apply. A change is made only if its original text is found exactly once, and anything else is reported to you.
 
@@ -172,11 +173,13 @@ Run these commands from the repository folder. The scripts need Python 3; the Wo
 | Add or update the IPBES styles and ribbon tab in the Word add-in | `python3 tools/prepare_addin.py "path/to/IPBES Editorial.dotm"` (close Word first; see "Updating the add-in" in section 1) |
 | Package the skill for Claude | `python3 tools/package_skill.py` (creates `ipbes-editorial.zip`, with the `ipbes-editorial` folder that Claude expects) |
 | Convert a Markdown draft to Word | `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py draft.md draft.docx --numbered --symbol IPBES/13/5` (leave out `--numbered` for documents without numbered paragraphs). Test: `python3 ipbes-editorial/scripts/md_to_ipbes_docx.py test/ipbes-test-draft.md test-draft.docx --numbered --number-headings` |
+| Convert a slide outline to PowerPoint | `python3 ipbes-editorial/scripts/md_to_ipbes_pptx.py slides.md slides.pptx` (needs python-pptx). Test: `python3 ipbes-editorial/scripts/md_to_ipbes_pptx.py test/ipbes-test-slides.md test-slides.pptx` (16 slides, no warnings) |
 | Apply a change table to a Word file as tracked changes | `python3 ipbes-editorial/scripts/apply_changes.py document.docx changes.md corrected.docx`. The change table can be Markdown, CSV, JSON or a Word table. Test: `python3 ipbes-editorial/scripts/apply_changes.py test/ipbes-test-document.docx test/ipbes-test-change-list.docx test-corrected.docx` |
 | Update the country list | Download https://ibok.ipbes.net/rest/v1/geo/data?format=application/rdf%2Bxml as `ipbes-geo.rdf`, then run `python3 tools/build_countries.py ipbes-geo.rdf ipbes-editorial/references/countries.csv` |
 | Rebuild the Word template from a new Plenary report | `python3 tools/make_template.py report.docx ipbes-editorial/assets/ipbes-document-template.docx` |
 | Add a new Plenary report to the evidence | `python3 tools/docx_dump.py report.docx temp/dump/2027-13.txt`, then `python3 tools/evidence_scan.py temp/dump > temp/evidence_counts.md`. Compare the result with `evidence.md` and update the rules if practice has changed. |
 | Extract text from a PDF source | `python3 tools/pdf_text.py source.pdf output.txt` (or `pdftotext -layout source.pdf output.txt`) |
+| Check the template slides after the standard deck changes | `python3 slide_text.py "ipbes-editorial/assets/Standard Slides_IPBES Intro.pptx"` (from the Anthropic pptx skill), then update the slide numbers in `presentations.md` section 3 and `TEMPLATE_SLIDES`, `SECTION_DIVIDERS` and `BACKGROUND_SOURCE` in `ipbes-editorial/scripts/ipbes_pptx.py` |
 | Make Word copies of the reference files | Open each `.md` file in Word (File → Open, "All files") and save it as `.docx`, or run `pandoc house-style.md -o house-style.docx` |
 
 **After any change to the rules:**
@@ -215,11 +218,11 @@ These assets were extracted from the *IPBES Logo and Visual Identity Guidelines*
 |---|---|
 | [ipbes-editorial/SKILL.md](ipbes-editorial/SKILL.md) | Instructions Claude reads first |
 | [ipbes-editorial/copilot/ipbes-editorial-instructions.txt](ipbes-editorial/copilot/ipbes-editorial-instructions.txt) | The same rules, condensed for Copilot |
-| `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026) and [evidence.md](ipbes-editorial/references/evidence.md) |
-| `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter) and `apply_changes.py` (applies a change table to a Word file as tracked changes) |
-| `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), and reference copies of the masthead logos (`masthead/`) |
+| `ipbes-editorial/references/` | The full rules: [house-style.md](ipbes-editorial/references/house-style.md) (voice, countries, style, format), [ipbes-terms.md](ipbes-editorial/references/ipbes-terms.md) (bodies, terms, assessments, symbols), [report-structure.md](ipbes-editorial/references/report-structure.md) (masthead, Word styles, standard wording), [inclusive-language.md](ipbes-editorial/references/inclusive-language.md), `countries.csv`, `un-spelling-list.md` (October 2026), [evidence.md](ipbes-editorial/references/evidence.md) and [presentations.md](ipbes-editorial/references/presentations.md) (PowerPoint decks from text and images) |
+| `ipbes-editorial/scripts/` | `md_to_ipbes_docx.py` (Markdown-to-Word converter), `apply_changes.py` (applies a change table to a Word file as tracked changes), `md_to_ipbes_pptx.py` (slide outline to PowerPoint) and `ipbes_pptx.py` (the slide helpers it uses; needs python-pptx) |
+| `ipbes-editorial/assets/` | Empty Word template with the IPBES styles (`ipbes-document-template.docx`), reference copies of the masthead logos (`masthead/`), and the standard IPBES slides (`Standard Slides_IPBES Intro.pptx`, 8 slides, about 12 MB) used for presentations |
 | `word-macro/` | `IPBESEditorial.bas` (the Word macros) and `ipbes-ribbon.xml` (the IPBES ribbon tab); see section 1 |
-| `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-unformatted.docx` (a document in Word's default formatting, for **Fix formatting**), `ipbes-test-change-list.docx` (a change table for that document) and `ipbes-test-draft.md` (a Markdown draft with typical errors) |
+| `test/` | Test files for all the tools: `ipbes-test-document.docx` (a document with typical errors), `ipbes-test-unformatted.docx` (a document in Word's default formatting, for **Fix formatting**), `ipbes-test-change-list.docx` (a change table for that document) `ipbes-test-draft.md` (a Markdown draft with typical errors) and `ipbes-test-slides.md` (a slide outline that uses every element of the format) |
 | `tools/` | Maintenance scripts (see section 4) |
 | `assets/` | IPBES logos, motifs and Visual Guidelines pages. These are brand and web material, kept here for now (see section 5). |
 

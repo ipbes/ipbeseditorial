@@ -1,6 +1,6 @@
 ---
 name: ipbes-editorial
-description: Edit, standardize or produce English documents in the house style of IPBES (Intergovernmental Science-Policy Platform on Biodiversity and Ecosystem Services) - Plenary reports, pre-session and information documents, decisions, notes and related texts. Applies the UN Editorial Manual as the baseline plus IPBES practice from the Plenary reports IPBES-1 to IPBES-12. Use when asked to edit or proofread an IPBES document, standardize language or terminology, check a masthead, or convert a Markdown draft to an IPBES-style Word document.
+description: Edit, standardize or produce English documents in the house style of IPBES (Intergovernmental Science-Policy Platform on Biodiversity and Ecosystem Services) - Plenary reports, pre-session and information documents, decisions, notes and related texts. Applies the UN Editorial Manual as the baseline plus IPBES practice from the Plenary reports IPBES-1 to IPBES-12. Use when asked to edit or proofread an IPBES document, standardize language or terminology, check a masthead, convert a Markdown draft to an IPBES-style Word document, or turn text and images into an IPBES-style PowerPoint presentation.
 ---
 
 # IPBES editorial assistant
@@ -20,6 +20,7 @@ Read only what the task needs.
 | `references/countries.csv` | The text names countries, regions or IPBES membership. Use the `name_in_text` column. |
 | `references/un-spelling-list.md` | The spelling or hyphenation of a word is in doubt. Search the file; do not read it whole. |
 | `references/evidence.md` | Someone asks why a rule exists, or whether IPBES really does something. |
+| `references/presentations.md` | The task is a PowerPoint presentation. |
 
 ## Rules that override everything else
 
@@ -31,7 +32,7 @@ Read only what the task needs.
 
 ## Typical requests
 
-Colleagues usually ask for one of three things: an **analysis** or a **fix** of an attached document, or a **conversion** of a Markdown draft.
+Colleagues usually ask for one of four things: an **analysis** or a **fix** of an attached document, a **conversion** of a Markdown draft, or a **presentation** made from their text and images.
 
 ### A. Analysis: "Analyse the document against the IPBES editorial criteria"
 
@@ -103,6 +104,22 @@ Treat any request to edit, correct, proofread or format a document ("edit and fo
    - **No direct formatting:** no fonts, sizes, colours, spacing or indents on paragraphs; bold and italic only where the rules call for them.
 3. Apply the language rules as well. Converting is not just reformatting.
 4. Add a masthead only if asked, using the logos in `assets/masthead/`.
+
+### D. Presentation: "Make slides from this text (and these images)"
+
+Follow `references/presentations.md`. In short:
+
+1. Rewrite the text as an **outline** (`presentations.md` section 2; full sample in `test/ipbes-test-slides.md`): `##` for each slide, `-` for points, `1.` and `(a)` for numbered lists, `[cards]`, Markdown tables, `[^1]` footnotes, `[chart]`, `[stat]`, `![alt](image)`, `? question`, `Notes:`, `[section] 2. Title` (section dividers) and `[template: …]`.
+2. Apply the language corrections in the outline with the editing rules of B, and write the change table. Never cut or paraphrase to make text fit: split it over two slides or move detail to the notes.
+3. Convert it. The converter builds on a copy of the standard IPBES slides in `assets/Standard Slides_IPBES Intro.pptx`:
+
+   ```
+   python3 scripts/md_to_ipbes_pptx.py slides.md slides.pptx
+   ```
+
+   If the script warns that a slide may not fit, split the slide in the outline and convert again. Never build the deck from a blank presentation.
+4. Check the text, the figures and every slide visually.
+5. **Output:** the deck, the change table with a short summary, **queries for the author** (missing content, inconsistent or unlabelled figures, voice), and a note of any text moved to the speaker notes or image not used.
 
 ## Quick checklist (common errors in drafts)
 
